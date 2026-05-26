@@ -1,5 +1,6 @@
 using CryptKnight.Application;
 using CryptKnight.Data;
+using CryptKnight.Enemies;
 using CryptKnight.Player;
 using UnityEngine;
 #if ENABLE_INPUT_SYSTEM
@@ -62,7 +63,11 @@ namespace CryptKnight.Gameplay
         {
             if (runState != null && runState.IsActive)
             {
-                BuildGameplayScene();
+                if (gameplayRoot == null)
+                {
+                    BuildGameplayScene();
+                }
+
                 return;
             }
 
@@ -77,7 +82,8 @@ namespace CryptKnight.Gameplay
             gameplayRoot = new GameObject("Runtime Gameplay Scene");
             CreateRoomFloor(gameplayRoot.transform);
             CreateRoomWalls(gameplayRoot.transform);
-            CreatePlayer(gameplayRoot.transform);
+            Transform player = CreatePlayer(gameplayRoot.transform);
+            CreateTestEnemy(gameplayRoot.transform, player);
             FrameCamera();
         }
 
@@ -118,7 +124,7 @@ namespace CryptKnight.Gameplay
             wall.AddComponent<BoxCollider2D>();
         }
 
-        private void CreatePlayer(Transform parent)
+        private Transform CreatePlayer(Transform parent)
         {
             GameObject player = new GameObject("Player");
             player.transform.SetParent(parent, false);
@@ -131,7 +137,19 @@ namespace CryptKnight.Gameplay
 
             player.AddComponent<Rigidbody2D>();
             player.AddComponent<CircleCollider2D>().radius = 0.35f;
+            player.AddComponent<PlayerDamageReceiver>();
             player.AddComponent<PlayerController>();
+            player.AddComponent<PlayerAttackController>();
+            return player.transform;
+        }
+
+        private void CreateTestEnemy(Transform parent, Transform player)
+        {
+            GameObject enemy = CreateSpriteObject("Test Enemy", parent, new Vector2(4f, 0f), new Vector2(0.8f, 0.8f), new Color(0.72f, 0.18f, 0.22f, 1f));
+            enemy.GetComponent<SpriteRenderer>().sortingOrder = 9;
+            enemy.AddComponent<CircleCollider2D>().radius = 0.45f;
+            enemy.AddComponent<EnemyHealth>();
+            enemy.AddComponent<TestEnemyShooter>().Initialize(player);
         }
 
         private static GameObject CreateSpriteObject(string objectName, Transform parent, Vector2 position, Vector2 scale, Color color)
