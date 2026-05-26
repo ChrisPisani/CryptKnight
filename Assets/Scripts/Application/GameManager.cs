@@ -73,5 +73,61 @@ namespace CryptKnight.Application
             Debug.Log($"Quit Crypt Knight run {CurrentRun.RunNumber}.");
             RunStateChanged?.Invoke(CurrentRun);
         }
+
+        public void DamagePlayer(int halfHeartDamage)
+        {
+            if (CurrentRun == null)
+            {
+                return;
+            }
+
+            CurrentRun.ApplyDamage(halfHeartDamage);
+            RunStateChanged?.Invoke(CurrentRun);
+        }
+
+        public void HealPlayer(int halfHeartAmount)
+        {
+            if (CurrentRun == null)
+            {
+                return;
+            }
+
+            CurrentRun.Heal(halfHeartAmount);
+            RunStateChanged?.Invoke(CurrentRun);
+        }
+
+        public void AddKeys(int amount)
+        {
+            if (CurrentRun == null)
+            {
+                return;
+            }
+
+            CurrentRun.AddKeys(amount);
+            RunStateChanged?.Invoke(CurrentRun);
+        }
+
+        public bool SpendKey()
+        {
+            if (CurrentRun == null)
+            {
+                return false;
+            }
+
+            bool spentKey = CurrentRun.SpendKey();
+            RunStateChanged?.Invoke(CurrentRun);
+            return spentKey;
+        }
+
+        public void AddCollectedItem(string itemId, string displayName, int quantity = 1)
+        {
+            if (CurrentRun == null)
+            {
+                return;
+            }
+
+            CurrentRun.AddCollectedItem(itemId, displayName, quantity);
+            RunStateChanged?.Invoke(CurrentRun);
+        }
     }
 }

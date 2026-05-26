@@ -94,6 +94,7 @@ namespace CryptKnight.Gameplay
         private void CreateRoomFloor(Transform parent)
         {
             GameObject floor = CreateSpriteObject("Room Floor", parent, new Vector2(0f, 0f), new Vector2(RoomWidth, RoomHeight), new Color(0.11f, 0.12f, 0.13f, 1f));
+            floor.GetComponent<SpriteRenderer>().sortingOrder = -10;
             floor.AddComponent<BoxCollider2D>().isTrigger = true;
         }
 
@@ -112,6 +113,7 @@ namespace CryptKnight.Gameplay
         private void CreateWall(Transform parent, string objectName, Vector2 position, Vector2 size, Color color)
         {
             GameObject wall = CreateSpriteObject(objectName, parent, position, size, color);
+            wall.GetComponent<SpriteRenderer>().sortingOrder = 0;
             wall.AddComponent<BoxCollider2D>();
         }
 
@@ -121,7 +123,10 @@ namespace CryptKnight.Gameplay
             player.transform.SetParent(parent, false);
             player.transform.position = Vector2.zero;
 
-            CreateSpriteObject("Player Visual", player.transform, Vector2.zero, new Vector2(0.7f, 0.7f), new Color(0.82f, 0.82f, 0.74f, 1f));
+            GameObject visual = CreateSpriteObject("Player Visual", player.transform, new Vector2(0f, 0.16f), new Vector2(3f, 3f), Color.white);
+            visual.GetComponent<SpriteRenderer>().sortingOrder = 10;
+            visual.AddComponent<PlayerIdleAnimator>();
+
             player.AddComponent<Rigidbody2D>();
             player.AddComponent<CircleCollider2D>().radius = 0.35f;
             player.AddComponent<PlayerController>();
