@@ -1,0 +1,186 @@
+using CryptKnight.Application;
+using CryptKnight.Data;
+using CryptKnight.Player;
+using UnityEngine;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
+
+namespace CryptKnight.Gameplay
+{
+    public sealed class GameplaySceneController : MonoBehaviour
+    {
+        private const float RoomWidth = 18f;
+        private const float RoomHeight = 10f;
+        private const float WallThickness = 0.75f;
+
+        private static GameplaySceneController instance;
+        private static Sprite squareSprite;
+
+        private GameObject gameplayRoot;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void CreateController()
+        {
+            if (instance != null)
+            {
+                return;
+            }
+
+            GameObject controllerObject = new GameObject("Gameplay Scene Controller");
+            instance = controllerObject.AddComponent<GameplaySceneController>();
+            DontDestroyOnLoad(controllerObject);
+        }
+
+        private void OnEnable()
+        {
+            GameManager.Instance.RunStateChanged += HandleRunStateChanged;
+        }
+
+        private void OnDisable()
+        {
+            if (GameManager.HasInstance)
+            {
+                GameManager.Instance.RunStateChanged -= HandleRunStateChanged;
+            }
+        }
+
+        private void Update()
+        {
+            if (GameManager.Instance.CurrentRun == null || !GameManager.Instance.CurrentRun.IsActive)
+            {
+                return;
+            }
+
+            if (IsQuitPressed())
+            {
+                GameManager.Instance.QuitCurrentRun();
+            }
+        }
+
+        private void HandleRunStateChanged(GameRunState runState)
+        {
+            if (runState != null && runState.IsActive)
+            {
+                BuildGameplayScene();
+                return;
+            }
+
+            ClearGameplayScene();
+        }
+
+        private void BuildGameplayScene()
+        {
+            ClearGameplayScene();
+
+            gameplayRoot = new GameObject("Runtime Gameplay Scene");
+            CreateRoomFloor(gameplayRoot.transform);
+            CreateRoomWalls(gameplayRoot.transform);
+            CreatePlayer(gameplayRoot.transform);
+            FrameCamera();
+        }
+
+        private void ClearGameplayScene()
+        {
+            if (gameplayRoot == null)
+            {
+                return;
+            }
+
+            Destroy(gameplayRoot);
+            gameplayRoot = null;
+        }
+
+        private void CreateRoomFloor(Transform parent)
+        {
+            GameObject floor = CreateSpriteObject("Room Floor", parent, new Vector2(0f, 0f), new Vector2(RoomWidth, RoomHeight), new Color(0.11f, 0.12f, 0.13f, 1f));
+            floor.AddComponent<BoxCollider2D>().isTrigger = true;
+        }
+
+        private void CreateRoomWalls(Transform parent)
+        {
+            Color wallColor = new Color(0.30f, 0.27f, 0.25f, 1f);
+            float halfWidth = RoomWidth * 0.5f;
+            float halfHeight = RoomHeight * 0.5f;
+
+            CreateWall(parent, "North Wall", new Vector2(0f, halfHeight + WallThickness * 0.5f), new Vector2(RoomWidth + WallThickness * 2f, WallThickness), wallColor);
+            CreateWall(parent, "South Wall", new Vector2(0f, -halfHeight - WallThickness * 0.5f), new Vector2(RoomWidth + WallThickness * 2f, WallThickness), wallColor);
+            CreateWall(parent, "West Wall", new Vector2(-halfWidth - WallThickness * 0.5f, 0f), new Vector2(WallThickness, RoomHeight), wallColor);
+            CreateWall(parent, "East Wall", new Vector2(halfWidth + WallThickness * 0.5f, 0f), new Vector2(WallThickness, RoomHeight), wallColor);
+        }
+
+        private void CreateWall(Transform parent, string objectName, Vector2 position, Vector2 size, Color color)
+        {
+            GameObject wall = CreateSpriteObject(objectName, parent, position, size, color);
+            wall.AddComponent<BoxCollider2D>();
+        }
+
+        private void CreatePlayer(Transform parent)
+        {
+            GameObject player = new GameObject("Player");
+            player.transform.SetParent(parent, false);
+            player.transform.position = Vector2.zero;
+
+            CreateSpriteObject("Player Visual", player.transform, Vector2.zero, new Vector2(0.7f, 0.7f), new Color(0.82f, 0.82f, 0.74f, 1f));
+            player.AddComponent<Rigidbody2D>();
+            player.AddComponent<CircleCollider2D>().radius = 0.35f;
+            player.AddComponent<PlayerController>();
+        }
+
+        private static GameObject CreateSpriteObject(string objectName, Transform parent, Vector2 position, Vector2 scale, Color color)
+        {
+            GameObject spriteObject = new GameObject(objectName);
+            spriteObject.transform.SetParent(parent, false);
+            spriteObject.transform.position = position;
+            spriteObject.transform.localScale = scale;
+
+            SpriteRenderer spriteRenderer = spriteObject.AddComponent<SpriteRenderer>();
+            spriteRenderer.sprite = GetSquareSprite();
+            spriteRenderer.color = color;
+
+            return spriteObject;
+        }
+
+        private static Sprite GetSquareSprite()
+        {
+            if (squareSprite != null)
+            {
+                return squareSprite;
+            }
+
+            Texture2D texture = new Texture2D(1, 1);
+            texture.SetPixel(0, 0, Color.white);
+            texture.Apply();
+            squareSprite = Sprite.Create(texture, new Rect(0f, 0f, 1f, 1f), new Vector2(0.5f, 0.5f), 1f);
+            return squareSprite;
+        }
+
+        private static void FrameCamera()
+        {
+            Camera camera = Camera.main;
+            if (camera == null)
+            {
+                GameObject cameraObject = new GameObject("Main Camera");
+                cameraObject.tag = "MainCamera";
+                camera = cameraObject.AddComponent<Camera>();
+                cameraObject.AddComponent<AudioListener>();
+            }
+
+            camera.transform.position = new Vector3(0f, 0f, -10f);
+            camera.orthographic = true;
+            camera.orthographicSize = 6.2f;
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = new Color(0.04f, 0.045f, 0.05f, 1f);
+        }
+
+        private static bool IsQuitPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            Keyboard keyboard = Keyboard.current;
+            return keyboard != null && keyboard.escapeKey.wasPressedThisFrame;
+#else
+            return Input.GetKeyDown(KeyCode.Escape);
+#endif
+        }
+    }
+}

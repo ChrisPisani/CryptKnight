@@ -24,6 +24,7 @@ namespace CryptKnight.UI
         private static readonly Color MutedTextColor = new Color(0.72f, 0.70f, 0.65f, 1f);
 
         private Font defaultFont;
+        private GameObject menuScreen;
         private GameObject menuPanel;
         private GameObject runPanel;
         private Text runInfoText;
@@ -61,13 +62,22 @@ namespace CryptKnight.UI
         private void BuildInterface()
         {
             Canvas canvas = CreateCanvas();
-            CreateFullScreenBackground(canvas.transform);
 
-            menuPanel = CreatePanel(canvas.transform, "Menu Panel", new Vector2(1920f, 1080f));
+            menuScreen = new GameObject("Menu Screen");
+            menuScreen.transform.SetParent(canvas.transform, false);
+            RectTransform menuScreenRect = menuScreen.AddComponent<RectTransform>();
+            menuScreenRect.anchorMin = Vector2.zero;
+            menuScreenRect.anchorMax = Vector2.one;
+            menuScreenRect.offsetMin = Vector2.zero;
+            menuScreenRect.offsetMax = Vector2.zero;
+
+            CreateFullScreenBackground(menuScreen.transform);
+
+            menuPanel = CreatePanel(menuScreen.transform, "Menu Panel", new Vector2(1920f, 1080f));
             CreateTitle(menuPanel.transform);
             CreateText(menuPanel.transform, "Subtitle", "Work in progress demo", 22, FontStyle.Normal, TextAnchor.MiddleCenter, MutedTextColor, new Vector2(0f, 86f), new Vector2(620f, 40f));
             CreateButton(menuPanel.transform, "New Run Button", "NEW RUN", new Vector2(0f, -56f), StartNewRun);
-            CreateVersionLabel(canvas.transform);
+            CreateVersionLabel(menuScreen.transform);
 
             runPanel = CreatePanel(canvas.transform, "Run Panel", new Vector2(520f, 320f));
             CreateText(runPanel.transform, "Run Title", "RUN STARTED", 34, FontStyle.Bold, TextAnchor.MiddleCenter, TextColor, new Vector2(0f, 108f), new Vector2(460f, 54f));
@@ -231,8 +241,8 @@ namespace CryptKnight.UI
         private void HandleRunStateChanged(GameRunState runState)
         {
             bool hasActiveRun = runState != null && runState.IsActive;
-            menuPanel.SetActive(!hasActiveRun);
-            runPanel.SetActive(hasActiveRun);
+            menuScreen.SetActive(!hasActiveRun);
+            runPanel.SetActive(false);
 
             if (runState == null)
             {
