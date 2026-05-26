@@ -1,0 +1,72 @@
+using CryptKnight.Data;
+using NUnit.Framework;
+
+namespace CryptKnight.Tests.EditMode
+{
+    public sealed class GameRunStateTests
+    {
+        [Test]
+        public void NewRunStartsWithExpectedValues()
+        {
+            GameRunState runState = GameRunState.CreateNewRun(2, 12345, 4, 4, 6);
+
+            Assert.That(runState.Status, Is.EqualTo(GameRunStatus.Active));
+            Assert.That(runState.RunNumber, Is.EqualTo(2));
+            Assert.That(runState.Seed, Is.EqualTo(12345));
+            Assert.That(runState.DungeonWidth, Is.EqualTo(4));
+            Assert.That(runState.DungeonHeight, Is.EqualTo(4));
+            Assert.That(runState.CurrentHealth, Is.EqualTo(6));
+            Assert.That(runState.MaxHealth, Is.EqualTo(6));
+            Assert.That(runState.KeyCount, Is.EqualTo(0));
+            Assert.That(runState.CollectedItems, Is.Empty);
+            Assert.That(runState.IsActive, Is.True);
+        }
+
+        [Test]
+        public void HealthUsesHalfHeartValues()
+        {
+            GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, 6);
+
+            runState.ApplyDamage(1);
+            Assert.That(runState.CurrentHealth, Is.EqualTo(5));
+
+            runState.Heal(10);
+            Assert.That(runState.CurrentHealth, Is.EqualTo(6));
+
+            runState.ApplyDamage(99);
+            Assert.That(runState.CurrentHealth, Is.EqualTo(0));
+            Assert.That(runState.Status, Is.EqualTo(GameRunStatus.Failed));
+            Assert.That(runState.IsActive, Is.False);
+        }
+
+        [Test]
+        public void KeysCanBeCollectedAndSpent()
+        {
+            GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, 6);
+
+            Assert.That(runState.SpendKey(), Is.False);
+
+            runState.AddKeys(2);
+
+            Assert.That(runState.KeyCount, Is.EqualTo(2));
+            Assert.That(runState.SpendKey(), Is.True);
+            Assert.That(runState.KeyCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void ItemsStackByType()
+        {
+            GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, 6);
+
+            runState.AddCollectedItem("damage_up", "Damage", 1);
+            runState.AddCollectedItem("damage_up", "Damage", 4);
+            runState.AddCollectedItem("speed_up", "Speed", 2);
+
+            Assert.That(runState.CollectedItems, Has.Count.EqualTo(2));
+            Assert.That(runState.CollectedItems[0].ItemId, Is.EqualTo("damage_up"));
+            Assert.That(runState.CollectedItems[0].Quantity, Is.EqualTo(5));
+            Assert.That(runState.CollectedItems[1].ItemId, Is.EqualTo("speed_up"));
+            Assert.That(runState.CollectedItems[1].Quantity, Is.EqualTo(2));
+        }
+    }
+}

@@ -30,8 +30,7 @@ namespace CryptKnight.Player
 
         private void FixedUpdate()
         {
-            Vector2 nextPosition = body.position + moveInput * moveSpeed * Time.fixedDeltaTime;
-            body.MovePosition(nextPosition);
+            body.MovePosition(PlayerMovement.CalculateNextPosition(body.position, moveInput, moveSpeed, Time.fixedDeltaTime));
         }
 
         private static Vector2 ReadMoveInput()
@@ -65,10 +64,10 @@ namespace CryptKnight.Player
                 input.x -= 1f;
             }
 
-            return input.sqrMagnitude > 1f ? input.normalized : input;
+            return PlayerMovement.NormalizeInput(input);
 #else
             Vector2 input = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
-            return input.sqrMagnitude > 1f ? input.normalized : input;
+            return PlayerMovement.NormalizeInput(input);
 #endif
         }
     }
