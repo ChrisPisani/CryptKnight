@@ -8,8 +8,6 @@ namespace CryptKnight.Application
     {
         private const int DungeonWidth = 4;
         private const int DungeonHeight = 4;
-        private const int PlayerStartingHealth = 6;
-
         private static GameManager instance;
         private int runCounter;
 
@@ -55,7 +53,7 @@ namespace CryptKnight.Application
                 seed,
                 DungeonWidth,
                 DungeonHeight,
-                PlayerStartingHealth);
+                PlayerBaseStats.CreateDefault());
 
             Debug.Log($"Started Crypt Knight run {CurrentRun.RunNumber} with seed {CurrentRun.Seed}.");
             RunStateChanged?.Invoke(CurrentRun);
@@ -127,6 +125,17 @@ namespace CryptKnight.Application
             }
 
             CurrentRun.AddCollectedItem(itemId, displayName, quantity);
+            RunStateChanged?.Invoke(CurrentRun);
+        }
+
+        public void AddStatModifier(PlayerStatModifier modifier)
+        {
+            if (CurrentRun == null)
+            {
+                return;
+            }
+
+            CurrentRun.AddStatModifier(modifier);
             RunStateChanged?.Invoke(CurrentRun);
         }
     }

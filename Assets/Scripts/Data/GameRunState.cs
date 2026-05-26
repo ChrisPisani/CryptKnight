@@ -44,14 +44,20 @@ namespace CryptKnight.Data
         public int DungeonWidth { get; private set; }
         public int DungeonHeight { get; private set; }
         public int CurrentHealth { get; private set; }
-        public int MaxHealth { get; private set; }
         public int KeyCount { get; private set; }
         public DateTime StartedAt { get; private set; }
 
         public bool IsActive => Status == GameRunStatus.Active;
+        public int MaxHealth => PlayerStats.MaxHealth;
+        public PlayerRuntimeStats PlayerStats { get; private set; }
         public IReadOnlyList<CollectedItemStack> CollectedItems => collectedItems;
 
         public static GameRunState CreateNewRun(int runNumber, int seed, int dungeonWidth, int dungeonHeight, int maxHealth)
+        {
+            return CreateNewRun(runNumber, seed, dungeonWidth, dungeonHeight, new PlayerBaseStats(maxHealth, 1, 5f, 1f));
+        }
+
+        public static GameRunState CreateNewRun(int runNumber, int seed, int dungeonWidth, int dungeonHeight, PlayerBaseStats playerBaseStats)
         {
             return new GameRunState
             {
@@ -60,8 +66,8 @@ namespace CryptKnight.Data
                 Seed = seed,
                 DungeonWidth = dungeonWidth,
                 DungeonHeight = dungeonHeight,
-                MaxHealth = maxHealth,
-                CurrentHealth = maxHealth,
+                PlayerStats = new PlayerRuntimeStats(playerBaseStats),
+                CurrentHealth = playerBaseStats.MaxHealth,
                 KeyCount = 0,
                 StartedAt = DateTime.UtcNow
             };
@@ -99,6 +105,21 @@ namespace CryptKnight.Data
             }
 
             CurrentHealth = Math.Min(MaxHealth, CurrentHealth + halfHeartAmount);
+        }
+
+        public void AddStatModifier(PlayerStatModifier modifier)
+        {
+            int previousMaxHealth = MaxHealth;
+            PlayerStats.AddModifier(modifier);
+
+            // getting a max health buff also gives a heal
+            int maxHealthIncrease = MaxHealth - previousMaxHealth;
+            if (maxHealthIncrease > 0)
+            {
+                CurrentHealth += maxHealthIncrease;
+            }
+
+            CurrentHealth = Math.Min(CurrentHealth, MaxHealth);
         }
 
         public void AddKeys(int amount)

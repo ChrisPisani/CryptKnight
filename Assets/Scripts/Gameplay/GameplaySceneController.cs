@@ -11,8 +11,8 @@ namespace CryptKnight.Gameplay
 {
     public sealed class GameplaySceneController : MonoBehaviour
     {
-        private const float RoomWidth = 18f;
-        private const float RoomHeight = 10f;
+        private const float RoomWidth = 13.5f;
+        private const float RoomHeight = 7.5f;
         private const float WallThickness = 0.75f;
 
         private static GameplaySceneController instance;
@@ -130,7 +130,7 @@ namespace CryptKnight.Gameplay
             player.transform.SetParent(parent, false);
             player.transform.position = Vector2.zero;
 
-            // This allows to scale sprites if needed with affecting physics
+            // This allows sprites to scale independently from the player's physics collider.
             GameObject visual = CreateSpriteObject("Player Visual", player.transform, new Vector2(0f, 0.16f), new Vector2(3f, 3f), Color.white);
             visual.GetComponent<SpriteRenderer>().sortingOrder = 10;
             visual.AddComponent<PlayerIdleAnimator>();
@@ -193,7 +193,7 @@ namespace CryptKnight.Gameplay
 
             camera.transform.position = new Vector3(0f, 0f, -10f);
             camera.orthographic = true;
-            camera.orthographicSize = 6.2f;
+            camera.orthographicSize = 4.7f;
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = new Color(0.04f, 0.045f, 0.05f, 1f);
         }

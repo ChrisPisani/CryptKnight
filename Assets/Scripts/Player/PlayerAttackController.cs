@@ -1,3 +1,4 @@
+using CryptKnight.Application;
 using CryptKnight.Combat;
 using UnityEngine;
 #if ENABLE_INPUT_SYSTEM
@@ -8,17 +9,15 @@ namespace CryptKnight.Player
 {
     public sealed class PlayerAttackController : MonoBehaviour
     {
-        private const float BaseCooldownSeconds = 1f;
         private const float ProjectileSpeed = 8f;
         private const float ProjectileRadius = 0.135f;
         private const float ProjectileLifetimeSeconds = 5f;
-        // Damage uses the same half-heart units as player health and enemy health for now.
-        private const int ProjectileDamage = 1;
 
-        private readonly AttackCooldown cooldown = new AttackCooldown(BaseCooldownSeconds);
+        private readonly AttackCooldown cooldown = new AttackCooldown();
 
         private void Update()
         {
+            float cooldownSeconds = GetAttackCooldownSeconds();
             if (!IsAttackHeld() || !cooldown.CanAttack(Time.time))
             {
                 return;
@@ -31,7 +30,7 @@ namespace CryptKnight.Player
             }
 
             Fire(aimDirection.normalized);
-            cooldown.MarkAttackUsed(Time.time);
+            cooldown.MarkAttackUsed(Time.time, cooldownSeconds);
         }
 
         private void Fire(Vector2 direction)
@@ -43,12 +42,22 @@ namespace CryptKnight.Player
                 spawnPosition,
                 direction,
                 DamageableTarget.Enemy,
-                ProjectileDamage,
+                GetDamage(),
                 ProjectileSpeed,
                 ProjectileRadius,
                 ProjectileLifetimeSeconds,
                 new Color(0.25f, 0.72f, 1f, 1f),
                 transform.parent);
+        }
+
+        private int GetDamage()
+        {
+            return GameManager.Instance.CurrentRun?.PlayerStats.Damage ?? 1;
+        }
+
+        private float GetAttackCooldownSeconds()
+        {
+            return GameManager.Instance.CurrentRun?.PlayerStats.AttackCooldownSeconds ?? 1f;
         }
 
         private Vector2 GetAimDirection()

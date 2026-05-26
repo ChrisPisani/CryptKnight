@@ -2,20 +2,14 @@ namespace CryptKnight.Combat
 {
     public sealed class AttackCooldown
     {
-        private readonly float cooldownSeconds;
         private float nextAllowedAttackTime;
-
-        public AttackCooldown(float cooldownSeconds)
-        {
-            this.cooldownSeconds = cooldownSeconds;
-        }
 
         public bool CanAttack(float currentTime)
         {
             return currentTime >= nextAllowedAttackTime;
         }
 
-        public void MarkAttackUsed(float currentTime)
+        public void MarkAttackUsed(float currentTime, float cooldownSeconds)
         {
             nextAllowedAttackTime = currentTime + cooldownSeconds;
         }

@@ -17,6 +17,9 @@ namespace CryptKnight.Tests.EditMode
             Assert.That(runState.DungeonHeight, Is.EqualTo(4));
             Assert.That(runState.CurrentHealth, Is.EqualTo(6));
             Assert.That(runState.MaxHealth, Is.EqualTo(6));
+            Assert.That(runState.PlayerStats.Damage, Is.EqualTo(1));
+            Assert.That(runState.PlayerStats.MovementSpeed, Is.EqualTo(5f));
+            Assert.That(runState.PlayerStats.AttackRate, Is.EqualTo(1f));
             Assert.That(runState.KeyCount, Is.EqualTo(0));
             Assert.That(runState.CollectedItems, Is.Empty);
             Assert.That(runState.IsActive, Is.True);
@@ -67,6 +70,32 @@ namespace CryptKnight.Tests.EditMode
             Assert.That(runState.CollectedItems[0].Quantity, Is.EqualTo(5));
             Assert.That(runState.CollectedItems[1].ItemId, Is.EqualTo("speed_up"));
             Assert.That(runState.CollectedItems[1].Quantity, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void StatModifiersUpdatePlayerStats()
+        {
+            GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, 6);
+
+            runState.AddStatModifier(new PlayerStatModifier(maxHealthBonus: 2, damageBonus: 1, movementSpeedBonus: 1.5f, attackRateBonus: 0.5f));
+
+            Assert.That(runState.MaxHealth, Is.EqualTo(8));
+            Assert.That(runState.CurrentHealth, Is.EqualTo(8));
+            Assert.That(runState.PlayerStats.Damage, Is.EqualTo(2));
+            Assert.That(runState.PlayerStats.MovementSpeed, Is.EqualTo(6.5f));
+            Assert.That(runState.PlayerStats.AttackRate, Is.EqualTo(1.5f));
+            Assert.That(runState.PlayerStats.AttackCooldownSeconds, Is.EqualTo(1f / 1.5f).Within(0.001f));
+        }
+
+        [Test]
+        public void MaxHealthReductionClampsCurrentHealth()
+        {
+            GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, 6);
+
+            runState.AddStatModifier(new PlayerStatModifier(maxHealthBonus: -2));
+
+            Assert.That(runState.MaxHealth, Is.EqualTo(4));
+            Assert.That(runState.CurrentHealth, Is.EqualTo(4));
         }
     }
 }

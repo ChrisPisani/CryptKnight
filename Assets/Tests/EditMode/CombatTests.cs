@@ -27,11 +27,11 @@ namespace CryptKnight.Tests.EditMode
         [Test]
         public void AttackCooldownBlocksRapidFire()
         {
-            AttackCooldown cooldown = new AttackCooldown(1f);
+            AttackCooldown cooldown = new AttackCooldown();
 
             Assert.That(cooldown.CanAttack(0f), Is.True);
 
-            cooldown.MarkAttackUsed(0f);
+            cooldown.MarkAttackUsed(0f, 1f);
 
             Assert.That(cooldown.CanAttack(0.5f), Is.False);
             Assert.That(cooldown.CanAttack(1f), Is.True);

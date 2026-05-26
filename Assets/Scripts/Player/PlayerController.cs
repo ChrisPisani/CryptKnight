@@ -1,3 +1,4 @@
+using CryptKnight.Application;
 using UnityEngine;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -30,7 +31,12 @@ namespace CryptKnight.Player
 
         private void FixedUpdate()
         {
-            body.MovePosition(PlayerMovement.CalculateNextPosition(body.position, moveInput, moveSpeed, Time.fixedDeltaTime));
+            body.MovePosition(PlayerMovement.CalculateNextPosition(body.position, moveInput, GetMoveSpeed(), Time.fixedDeltaTime));
+        }
+
+        private float GetMoveSpeed()
+        {
+            return GameManager.Instance.CurrentRun?.PlayerStats.MovementSpeed ?? moveSpeed;
         }
 
         private static Vector2 ReadMoveInput()

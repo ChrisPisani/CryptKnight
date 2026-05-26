@@ -5,6 +5,11 @@ namespace CryptKnight.Tests.EditMode
 {
     public sealed class PhysicsCollisionTests
     {
+        private const float RoomWidth = 13.5f;
+        private const float RoomHeight = 7.5f;
+        private const float WallThickness = 0.75f;
+        private const float PlayerRadius = 0.35f;
+
         private readonly System.Collections.Generic.List<Object> createdObjects = new System.Collections.Generic.List<Object>();
 
         [TearDown]
@@ -24,8 +29,8 @@ namespace CryptKnight.Tests.EditMode
         [Test]
         public void PlayerStartsClearOfRoomWall()
         {
-            Collider2D player = CreateCircleCollider("Player", Vector2.zero, 0.35f);
-            Collider2D wall = CreateWallCollider("East Wall", new Vector2(9.375f, 0f), new Vector2(0.75f, 10f));
+            Collider2D player = CreateCircleCollider("Player", Vector2.zero, PlayerRadius);
+            Collider2D wall = CreateWallCollider("East Wall", GetEastWallPosition(), GetEastWallSize());
 
             ColliderDistance2D distance = player.Distance(wall);
 
@@ -35,8 +40,9 @@ namespace CryptKnight.Tests.EditMode
         [Test]
         public void PlayerTouchesWallAtBoundary()
         {
-            Collider2D player = CreateCircleCollider("Player", new Vector2(9.2f, 0f), 0.35f);
-            Collider2D wall = CreateWallCollider("East Wall", new Vector2(9.375f, 0f), new Vector2(0.75f, 10f));
+            float touchingPlayerX = RoomWidth * 0.5f + PlayerRadius - 0.01f;
+            Collider2D player = CreateCircleCollider("Player", new Vector2(touchingPlayerX, 0f), PlayerRadius);
+            Collider2D wall = CreateWallCollider("East Wall", GetEastWallPosition(), GetEastWallSize());
 
             Physics2D.SyncTransforms();
 
@@ -65,6 +71,16 @@ namespace CryptKnight.Tests.EditMode
             BoxCollider2D collider = gameObject.AddComponent<BoxCollider2D>();
             collider.size = size;
             return collider;
+        }
+
+        private static Vector2 GetEastWallPosition()
+        {
+            return new Vector2(RoomWidth * 0.5f + WallThickness * 0.5f, 0f);
+        }
+
+        private static Vector2 GetEastWallSize()
+        {
+            return new Vector2(WallThickness, RoomHeight);
         }
     }
 }
