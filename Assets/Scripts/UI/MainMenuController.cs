@@ -12,7 +12,7 @@ namespace CryptKnight.UI
 {
     public sealed class MainMenuController : MonoBehaviour
     {
-        private const string DemoVersion = "v0.3.0";
+        private const string DemoVersion = "v0.6.0";
 
         private static readonly Color BackgroundColor = new Color(0.05f, 0.05f, 0.07f, 1f);
         private static readonly Color PanelColor = new Color(0.12f, 0.12f, 0.16f, 0.94f);

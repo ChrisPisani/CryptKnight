@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace CryptKnight.Tests.EditMode
 {
-    public sealed class PlayerControllerTests
+    public sealed class PlayerTests
     {
         private readonly System.Collections.Generic.List<Object> createdObjects = new System.Collections.Generic.List<Object>();
 
@@ -24,7 +24,7 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void PlayerRigidbodyUsesTopDownSettings()
+        public void RigidbodyIsTopDown()
         {
             GameObject player = CreatePlayer();
             Rigidbody2D body = player.GetComponent<Rigidbody2D>();
@@ -38,7 +38,7 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void MovementUsesInputDirection()
+        public void MovementUsesInput()
         {
             Vector2 nextPosition = PlayerMovement.CalculateNextPosition(Vector2.zero, Vector2.right, 5f, Time.fixedDeltaTime);
 
@@ -47,7 +47,7 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void DiagonalMovementIsNotFaster()
+        public void DiagonalMovementIsClamped()
         {
             Vector2 nextPosition = PlayerMovement.CalculateNextPosition(Vector2.zero, new Vector2(1f, 1f), 5f, Time.fixedDeltaTime);
 

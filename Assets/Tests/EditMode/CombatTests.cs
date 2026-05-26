@@ -25,7 +25,7 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void AttackCooldownBlocksRapidFire()
+        public void CooldownWaits()
         {
             AttackCooldown cooldown = new AttackCooldown();
 
@@ -38,7 +38,7 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void ProjectileStoresDamageAndTarget()
+        public void ProjectileIsConfigured()
         {
             GameObject projectileObject = new GameObject("Projectile");
             createdObjects.Add(projectileObject);
@@ -57,7 +57,7 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void ProjectileFactoryKeepsVisualAndColliderScaleSeparate()
+        public void ProjectileVisualScalesSeparately()
         {
             ProjectileController projectile = ProjectileFactory.CreateCircleProjectile(
                 "Projectile",
@@ -81,7 +81,7 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void EnemyCanTakeDamage()
+        public void EnemyTakesDamage()
         {
             GameObject enemyObject = new GameObject("Enemy");
             createdObjects.Add(enemyObject);

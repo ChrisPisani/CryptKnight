@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace CryptKnight.Tests.EditMode
 {
-    public sealed class PhysicsCollisionTests
+    public sealed class CollisionTests
     {
         private const float RoomWidth = 13.5f;
         private const float RoomHeight = 7.5f;
@@ -27,7 +27,7 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void PlayerStartsClearOfRoomWall()
+        public void PlayerStartsClearOfWall()
         {
             Collider2D player = CreateCircleCollider("Player", Vector2.zero, PlayerRadius);
             Collider2D wall = CreateWallCollider("East Wall", GetEastWallPosition(), GetEastWallSize());
@@ -38,7 +38,7 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void PlayerTouchesWallAtBoundary()
+        public void PlayerHitsWallAtBoundary()
         {
             float touchingPlayerX = RoomWidth * 0.5f + PlayerRadius - 0.01f;
             Collider2D player = CreateCircleCollider("Player", new Vector2(touchingPlayerX, 0f), PlayerRadius);

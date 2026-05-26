@@ -3,10 +3,10 @@ using NUnit.Framework;
 
 namespace CryptKnight.Tests.EditMode
 {
-    public sealed class GameRunStateTests
+    public sealed class RunStateTests
     {
         [Test]
-        public void NewRunStartsWithExpectedValues()
+        public void NewRunHasDefaults()
         {
             GameRunState runState = GameRunState.CreateNewRun(2, 12345, 4, 4, 6);
 
@@ -26,7 +26,7 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void HealthUsesHalfHeartValues()
+        public void HealthUsesHalfHearts()
         {
             GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, 6);
 
@@ -43,7 +43,7 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void KeysCanBeCollectedAndSpent()
+        public void KeysCanBeSpent()
         {
             GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, 6);
 
@@ -57,7 +57,7 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void ItemsStackByType()
+        public void ItemsStack()
         {
             GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, 6);
 
@@ -73,7 +73,7 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void StatModifiersUpdatePlayerStats()
+        public void StatModifiersApply()
         {
             GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, 6);
 
@@ -88,7 +88,7 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void MaxHealthReductionClampsCurrentHealth()
+        public void HealthStaysUnderMax()
         {
             GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, 6);
 
