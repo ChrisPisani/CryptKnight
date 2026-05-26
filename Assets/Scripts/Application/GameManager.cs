@@ -1,0 +1,77 @@
+using System;
+using CryptKnight.Data;
+using UnityEngine;
+
+namespace CryptKnight.Application
+{
+    public sealed class GameManager : MonoBehaviour
+    {
+        private const int DungeonWidth = 4;
+        private const int DungeonHeight = 4;
+        private const int PlayerStartingHealth = 6;
+
+        private static GameManager instance;
+        private int runCounter;
+
+        public static GameManager Instance
+        {
+            get
+            {
+                if (instance == null)
+                {
+                    GameObject managerObject = new GameObject("Game Manager");
+                    instance = managerObject.AddComponent<GameManager>();
+                }
+
+                return instance;
+            }
+        }
+
+        public static bool HasInstance => instance != null;
+
+        public GameRunState CurrentRun { get; private set; }
+
+        public event Action<GameRunState> RunStateChanged;
+
+        private void Awake()
+        {
+            if (instance != null && instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+
+            instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+
+        public GameRunState StartNewRun()
+        {
+            runCounter++;
+
+            int seed = UnityEngine.Random.Range(100000, 999999);
+            CurrentRun = GameRunState.CreateNewRun(
+                runCounter,
+                seed,
+                DungeonWidth,
+                DungeonHeight,
+                PlayerStartingHealth);
+
+            Debug.Log($"Started Crypt Knight run {CurrentRun.RunNumber} with seed {CurrentRun.Seed}.");
+            RunStateChanged?.Invoke(CurrentRun);
+            return CurrentRun;
+        }
+
+        public void QuitCurrentRun()
+        {
+            if (CurrentRun == null || !CurrentRun.IsActive)
+            {
+                return;
+            }
+
+            CurrentRun.QuitRun();
+            Debug.Log($"Quit Crypt Knight run {CurrentRun.RunNumber}.");
+            RunStateChanged?.Invoke(CurrentRun);
+        }
+    }
+}
