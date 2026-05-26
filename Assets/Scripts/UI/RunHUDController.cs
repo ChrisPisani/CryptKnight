@@ -143,6 +143,7 @@ namespace CryptKnight.UI
 
         private void RefreshItems(IReadOnlyList<CollectedItemStack> items)
         {
+            // Item UI is rebuilt only when something in the signature changes
             string itemSignature = CreateItemSignature(items);
             if (itemSignature == lastItemSignature)
             {
@@ -204,6 +205,7 @@ namespace CryptKnight.UI
 
         private void LoadHudSprites()
         {
+            // generated UI uses editor asset lookup until I make a prefab
             fullHeartSprite = LoadSpriteAtPath("Assets/Art/UI/heartDisplay.png", "heartDisplay_0");
             emptyHeartSprite = LoadSpriteAtPath("Assets/Art/UI/heartDisplay.png", "heartDisplay_1");
             halfHeartSprite = LoadSpriteAtPath("Assets/Art/UI/heartDisplay.png", "heartDisplay_2");

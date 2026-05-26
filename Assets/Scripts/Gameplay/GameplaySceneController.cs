@@ -73,6 +73,7 @@ namespace CryptKnight.Gameplay
         {
             ClearGameplayScene();
 
+            // This is a temporary room scene, will be replaced by dungeon and room generation later
             gameplayRoot = new GameObject("Runtime Gameplay Scene");
             CreateRoomFloor(gameplayRoot.transform);
             CreateRoomWalls(gameplayRoot.transform);
@@ -123,6 +124,7 @@ namespace CryptKnight.Gameplay
             player.transform.SetParent(parent, false);
             player.transform.position = Vector2.zero;
 
+            // This allows to scale sprites if needed with affecting physics
             GameObject visual = CreateSpriteObject("Player Visual", player.transform, new Vector2(0f, 0.16f), new Vector2(3f, 3f), Color.white);
             visual.GetComponent<SpriteRenderer>().sortingOrder = 10;
             visual.AddComponent<PlayerIdleAnimator>();
@@ -152,7 +154,7 @@ namespace CryptKnight.Gameplay
             {
                 return squareSprite;
             }
-
+            
             Texture2D texture = new Texture2D(1, 1);
             texture.SetPixel(0, 0, Color.white);
             texture.Apply();

@@ -61,6 +61,7 @@ namespace CryptKnight.Player
         private void LoadIdleFrames()
         {
 #if UNITY_EDITOR
+            // The player is spawned from code, so the sliced sheet is loaded by name
             UnityEngine.Object[] assets = AssetDatabase.LoadAllAssetsAtPath(KnightSpritePath);
             Dictionary<string, Sprite> spritesByName = new Dictionary<string, Sprite>();
 

@@ -8,6 +8,7 @@ namespace CryptKnight.UI
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void CreateMainMenu()
         {
+            // The current prototype builds UI at runtime so the default Unity scene can stay minimal
             _ = GameManager.Instance;
 
             if (Object.FindFirstObjectByType<MainMenuController>() != null)
