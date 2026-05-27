@@ -14,6 +14,7 @@ namespace CryptKnight.UI
     {
         private static readonly Color HudTextColor = new Color(0.96f, 0.93f, 0.84f, 1f);
         private static readonly Color ItemPanelColor = new Color(0.06f, 0.06f, 0.075f, 0.72f);
+        private static readonly Color QuantityBadgeColor = new Color(0.02f, 0.022f, 0.028f, 0.86f);
 
         private Font defaultFont;
         private GameObject hudRoot;
@@ -71,7 +72,7 @@ namespace CryptKnight.UI
             heartsRoot = CreateAnchoredGroup(topLeft.transform, "Hearts", new Vector2(0f, 1f), Vector2.zero, new Vector2(360f, 56f), new Vector2(0f, 1f)).transform;
             CreateKeyDisplay(topLeft.transform);
 
-            GameObject bottomLeft = CreateAnchoredGroup(hudRoot.transform, "Collected Items HUD", new Vector2(0f, 0f), new Vector2(28f, 28f), new Vector2(620f, 140f), new Vector2(0f, 0f));
+            GameObject bottomLeft = CreateAnchoredGroup(hudRoot.transform, "Collected Items HUD", new Vector2(0f, 0f), new Vector2(28f, 28f), new Vector2(520f, 86f), new Vector2(0f, 0f));
             Image itemPanel = bottomLeft.AddComponent<Image>();
             itemPanel.color = ItemPanelColor;
             itemRoot = bottomLeft.transform;
@@ -171,9 +172,9 @@ namespace CryptKnight.UI
 
         private void CreateItemStack(CollectedItemStack itemStack, int index)
         {
-            float x = 24f + index * 82f;
+            float x = 22f + index * 64f;
 
-            GameObject stackObject = CreateAnchoredGroup(itemRoot, $"Item {itemStack.ItemId}", new Vector2(0f, 0.5f), new Vector2(x, 0f), new Vector2(70f, 92f), new Vector2(0f, 0.5f));
+            GameObject stackObject = CreateAnchoredGroup(itemRoot, $"Item {itemStack.ItemId}", new Vector2(0f, 0.5f), new Vector2(x, 0f), new Vector2(58f, 58f), new Vector2(0f, 0.5f));
 
             GameObject iconObject = new GameObject("Icon");
             iconObject.transform.SetParent(stackObject.transform, false);
@@ -181,15 +182,16 @@ namespace CryptKnight.UI
             icon.sprite = LootItemVisuals.GetItemSprite(itemStack.ItemId);
             icon.preserveAspect = true;
             icon.color = Color.white;
+            icon.raycastTarget = false;
 
             RectTransform iconRect = icon.rectTransform;
-            iconRect.anchorMin = new Vector2(0.5f, 1f);
-            iconRect.anchorMax = new Vector2(0.5f, 1f);
-            iconRect.pivot = new Vector2(0.5f, 1f);
-            iconRect.anchoredPosition = new Vector2(0f, -8f);
-            iconRect.sizeDelta = new Vector2(46f, 46f);
+            iconRect.anchorMin = new Vector2(0.5f, 0.5f);
+            iconRect.anchorMax = new Vector2(0.5f, 0.5f);
+            iconRect.pivot = new Vector2(0.5f, 0.5f);
+            iconRect.anchoredPosition = Vector2.zero;
+            iconRect.sizeDelta = new Vector2(48f, 48f);
 
-            CreateText(stackObject.transform, "Quantity", $"x{itemStack.Quantity}", 18, FontStyle.Bold, TextAnchor.MiddleCenter, HudTextColor, new Vector2(0f, -28f), new Vector2(66f, 28f));
+            CreateQuantityBadge(stackObject.transform, itemStack.Quantity, new Vector2(36f, -18f));
         }
 
         private HeartView CreateHeartView(Transform parent, int index)
@@ -313,6 +315,41 @@ namespace CryptKnight.UI
             rectTransform.sizeDelta = size;
 
             return textComponent;
+        }
+
+        private void CreateQuantityBadge(Transform parent, int quantity, Vector2 position)
+        {
+            GameObject badgeObject = new GameObject("Quantity Badge");
+            badgeObject.transform.SetParent(parent, false);
+
+            Image badge = badgeObject.AddComponent<Image>();
+            badge.color = QuantityBadgeColor;
+            badge.raycastTarget = false;
+
+            RectTransform badgeRect = badge.rectTransform;
+            badgeRect.anchorMin = new Vector2(0f, 0.5f);
+            badgeRect.anchorMax = new Vector2(0f, 0.5f);
+            badgeRect.pivot = new Vector2(0.5f, 0.5f);
+            badgeRect.anchoredPosition = position;
+            badgeRect.sizeDelta = new Vector2(32f, 22f);
+
+            GameObject textObject = new GameObject("Quantity");
+            textObject.transform.SetParent(badgeObject.transform, false);
+
+            Text textComponent = textObject.AddComponent<Text>();
+            textComponent.text = $"x{quantity}";
+            textComponent.font = defaultFont;
+            textComponent.fontSize = 13;
+            textComponent.fontStyle = FontStyle.Bold;
+            textComponent.alignment = TextAnchor.MiddleCenter;
+            textComponent.color = HudTextColor;
+            textComponent.raycastTarget = false;
+
+            RectTransform textRect = textComponent.rectTransform;
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = Vector2.zero;
+            textRect.offsetMax = Vector2.zero;
         }
 
         private sealed class HeartView

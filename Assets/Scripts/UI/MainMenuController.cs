@@ -63,7 +63,7 @@ namespace CryptKnight.UI
         {
             Canvas canvas = CreateCanvas();
 
-            // Menu and HUD share one generated canvas, but each has its own root so they don't get tied up together
+            // Menu and HUD share one generated canvas with their own root
             menuScreen = new GameObject("Menu Screen");
             menuScreen.transform.SetParent(canvas.transform, false);
             RectTransform menuScreenRect = menuScreen.AddComponent<RectTransform>();
@@ -87,6 +87,9 @@ namespace CryptKnight.UI
 
             RunHUDController hudController = gameObject.AddComponent<RunHUDController>();
             hudController.Initialize(canvas.transform, defaultFont);
+
+            RunPauseMenuController pauseMenuController = gameObject.AddComponent<RunPauseMenuController>();
+            pauseMenuController.Initialize(canvas.transform, defaultFont);
         }
 
         private Canvas CreateCanvas()

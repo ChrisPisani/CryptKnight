@@ -97,5 +97,38 @@ namespace CryptKnight.Tests.EditMode
             Assert.That(runState.MaxHealth, Is.EqualTo(4));
             Assert.That(runState.CurrentHealth, Is.EqualTo(4));
         }
+
+        [Test]
+        public void StatSummaryShowsCurrentValues()
+        {
+            GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, 6);
+            runState.ApplyDamage(1);
+            runState.AddKeys(2);
+            runState.AddStatModifier(new PlayerStatModifier(damageBonus: 1, movementSpeedBonus: 0.5f, attackRateBonus: 0.2f));
+
+            string summary = PlayerStatSummaryFormatter.Format(runState);
+
+            Assert.That(summary, Does.Contain("Health: 2.5 / 3 hearts"));
+            Assert.That(summary, Does.Contain("Damage: 2"));
+            Assert.That(summary, Does.Contain("Movement Speed: 5.5"));
+            Assert.That(summary, Does.Contain("Attack Speed: 1.2"));
+            Assert.That(summary, Does.Contain("Keys: 2"));
+        }
+
+        [Test]
+        public void StatSummaryCanHideHudValues()
+        {
+            GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, 6);
+            runState.AddKeys(2);
+            runState.AddStatModifier(new PlayerStatModifier(damageBonus: 1, movementSpeedBonus: 0.5f, attackRateBonus: 0.2f));
+
+            string summary = PlayerStatSummaryFormatter.FormatStatsOnly(runState);
+
+            Assert.That(summary, Does.Not.Contain("Health"));
+            Assert.That(summary, Does.Not.Contain("Keys"));
+            Assert.That(summary, Does.Contain("Damage: 2"));
+            Assert.That(summary, Does.Contain("Movement Speed: 5.5"));
+            Assert.That(summary, Does.Contain("Attack Speed: 1.2"));
+        }
     }
 }

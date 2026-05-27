@@ -39,7 +39,7 @@ namespace CryptKnight.Tests.EditMode
             LootItemDefinition keyItem = configuration.Items.Single(item => item.ItemId == "key");
 
             Assert.That(heartItem.StatModifier.MaxHealthBonus, Is.EqualTo(2));
-            Assert.That(heartItem.Description, Is.EqualTo("Gain one full heart container."));
+            Assert.That(heartItem.Description, Is.EqualTo("Gain 1 max heart."));
             Assert.That(heartItem.IconAssetPath, Is.EqualTo("Assets/Art/Items/heart_container.png"));
             Assert.That(damageItem.StatModifier.DamageBonus, Is.EqualTo(1));
             Assert.That(speedItem.StatModifier.MovementSpeedBonus, Is.EqualTo(1f));
@@ -225,6 +225,39 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
+        public void EffectTextShowsStatBonuses()
+        {
+            LootItemDefinition item = new LootItemDefinition(
+                "mixed_relic",
+                "Mixed Relic",
+                string.Empty,
+                new PlayerStatModifier(maxHealthBonus: 2, damageBonus: 1, movementSpeedBonus: 1f, attackRateBonus: 0.2f),
+                new[] { LootSourceType.Chest });
+
+            string effectText = LootItemEffectFormatter.FormatEffects(item);
+
+            Assert.That(effectText, Does.Contain("+1 max heart"));
+            Assert.That(effectText, Does.Contain("+1 damage"));
+            Assert.That(effectText, Does.Contain("+1 movement speed"));
+            Assert.That(effectText, Does.Contain("+0.2 attack speed"));
+        }
+
+        [Test]
+        public void EffectTextUsesStackQuantity()
+        {
+            LootItemDefinition item = new LootItemDefinition(
+                "speed_up",
+                "Speed Up",
+                string.Empty,
+                new PlayerStatModifier(movementSpeedBonus: 1f),
+                new[] { LootSourceType.Chest });
+
+            string effectText = LootItemEffectFormatter.FormatEffects(item, 3);
+
+            Assert.That(effectText, Is.EqualTo("+3 movement speed"));
+        }
+
+        [Test]
         public void PickupVisualIsHalfSizedWithoutShrinkingInteractionRange()
         {
             LootItemDefinition item = new LootItemDefinition(
@@ -240,6 +273,22 @@ namespace CryptKnight.Tests.EditMode
             Assert.That(pickup.transform.localScale.x, Is.EqualTo(0.5f).Within(0.001f));
             Assert.That(pickup.transform.localScale.y, Is.EqualTo(0.5f).Within(0.001f));
             Assert.That(pickupCollider.radius * pickup.transform.localScale.x, Is.EqualTo(1.05f).Within(0.001f));
+        }
+
+        [Test]
+        public void PickupDrawsUnderPlayer()
+        {
+            LootItemDefinition item = new LootItemDefinition(
+                "test_relic",
+                "Test Relic",
+                string.Empty,
+                new PlayerStatModifier(),
+                new[] { LootSourceType.Chest });
+
+            LootPickup pickup = CreatePickup(item);
+            SpriteRenderer pickupRenderer = pickup.GetComponent<SpriteRenderer>();
+
+            Assert.That(pickupRenderer.sortingOrder, Is.LessThan(10));
         }
 
         [Test]

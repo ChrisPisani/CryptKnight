@@ -4,9 +4,6 @@ using CryptKnight.Enemies;
 using CryptKnight.Loot;
 using CryptKnight.Player;
 using UnityEngine;
-#if ENABLE_INPUT_SYSTEM
-using UnityEngine.InputSystem;
-#endif
 
 namespace CryptKnight.Gameplay
 {
@@ -44,19 +41,6 @@ namespace CryptKnight.Gameplay
             if (GameManager.HasInstance)
             {
                 GameManager.Instance.RunStateChanged -= HandleRunStateChanged;
-            }
-        }
-
-        private void Update()
-        {
-            if (GameManager.Instance.CurrentRun == null || !GameManager.Instance.CurrentRun.IsActive)
-            {
-                return;
-            }
-
-            if (IsQuitPressed())
-            {
-                GameManager.Instance.QuitCurrentRun();
             }
         }
 
@@ -230,14 +214,5 @@ namespace CryptKnight.Gameplay
             camera.backgroundColor = new Color(0.04f, 0.045f, 0.05f, 1f);
         }
 
-        private static bool IsQuitPressed()
-        {
-#if ENABLE_INPUT_SYSTEM
-            Keyboard keyboard = Keyboard.current;
-            return keyboard != null && keyboard.escapeKey.wasPressedThisFrame;
-#else
-            return Input.GetKeyDown(KeyCode.Escape);
-#endif
-        }
     }
 }

@@ -68,7 +68,7 @@ namespace CryptKnight.Player
                 return Vector2.right;
             }
 
-            // Mouse input is screen-space, so attacks aim through the active camera into the 2D world.
+            // Mouse input aim though active camera into 2D world space
             Vector2 pointerPosition = GetPointerScreenPosition();
             Vector3 worldPosition = camera.ScreenToWorldPoint(new Vector3(pointerPosition.x, pointerPosition.y, -camera.transform.position.z));
             return (Vector2)(worldPosition - transform.position);

@@ -16,6 +16,7 @@ namespace CryptKnight.Loot
         private const float PromptWorldOffsetY = 1.1f;
         private const float BobAmplitude = 0.08f;
         private const float BobSpeed = 3.2f;
+        private const int PickupSortingOrder = 4;
 
         private LootItemDefinition itemDefinition;
         private SpriteRenderer spriteRenderer;
@@ -118,7 +119,7 @@ namespace CryptKnight.Loot
         {
             spriteRenderer.sprite = LootItemVisuals.GetItemSprite(itemDefinition);
             spriteRenderer.color = Color.white;
-            spriteRenderer.sortingOrder = 12;
+            spriteRenderer.sortingOrder = PickupSortingOrder;
             transform.localScale = new Vector3(VisualScale, VisualScale, 1f);
 
             // The collider is larger than the item so you don't have to be directly on top

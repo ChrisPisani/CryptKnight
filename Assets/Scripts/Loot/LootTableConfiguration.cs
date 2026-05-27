@@ -108,7 +108,7 @@ namespace CryptKnight.Loot
             return new LootTableConfiguration(
                 new[]
                 {
-                    CreateFallbackItem("heart_container", "Monster Heart", "Gain one full heart container.", new PlayerStatModifier(maxHealthBonus: 2), allSources),
+                    CreateFallbackItem("heart_container", "Monster Heart", "Gain 1 max heart.", new PlayerStatModifier(maxHealthBonus: 2), allSources),
                     CreateFallbackItem("damage_up", "Spinach", "Increase attack damage by 1.", new PlayerStatModifier(damageBonus: 1), allSources),
                     CreateFallbackItem("speed_up", "Bottled Lightning", "Increase movement speed by 1.", new PlayerStatModifier(movementSpeedBonus: 1f), allSources),
                     CreateFallbackItem("attack_rate_up", "Chili Pepper", "Increase attack rate by 0.2 shots per second.", new PlayerStatModifier(attackRateBonus: 0.2f), allSources),
