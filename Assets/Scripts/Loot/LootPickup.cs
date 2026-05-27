@@ -1,0 +1,210 @@
+using CryptKnight.Application;
+using CryptKnight.Player;
+using UnityEngine;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
+
+namespace CryptKnight.Loot
+{
+    [RequireComponent(typeof(SpriteRenderer))]
+    [RequireComponent(typeof(CircleCollider2D))]
+    public sealed class LootPickup : MonoBehaviour
+    {
+        private const float PickupRadius = 1.05f;
+        private const float VisualScale = 0.5f;
+        private const float PromptWorldOffsetY = 1.1f;
+        private const float BobAmplitude = 0.08f;
+        private const float BobSpeed = 3.2f;
+
+        private LootItemDefinition itemDefinition;
+        private SpriteRenderer spriteRenderer;
+        private CircleCollider2D pickupCollider;
+        private GameObject promptRoot;
+        private TextMesh promptText;
+        private Vector3 bobBasePosition;
+        private float bobPhase;
+        private bool hasBobBasePosition;
+        private int playersInRange;
+        private bool wasCollected;
+
+        public LootItemDefinition ItemDefinition => itemDefinition;
+        public bool IsPlayerInRange => playersInRange > 0;
+        public bool IsPromptVisible => promptRoot != null && promptRoot.activeSelf;
+
+        public void Initialize(LootItemDefinition definition)
+        {
+            itemDefinition = definition;
+            EnsureComponents();
+            ConfigureVisual();
+            ConfigurePromptText();
+            SetPromptVisible(false);
+            CaptureBobBasePosition();
+        }
+
+        private void Awake()
+        {
+            EnsureComponents();
+            ConfigurePrompt();
+            SetPromptVisible(false);
+        }
+
+        private void Update()
+        {
+            ApplyBobbing();
+
+            if (IsPlayerInRange && IsInteractPressed())
+            {
+                TryPickUp();
+            }
+        }
+
+        private void OnTriggerEnter2D(Collider2D other)
+        {
+            if (other.GetComponentInParent<PlayerController>() == null)
+            {
+                return;
+            }
+
+            playersInRange++;
+            SetPromptVisible(true);
+        }
+
+        private void OnTriggerExit2D(Collider2D other)
+        {
+            if (other.GetComponentInParent<PlayerController>() == null)
+            {
+                return;
+            }
+
+            playersInRange = Mathf.Max(0, playersInRange - 1);
+            SetPromptVisible(IsPlayerInRange);
+        }
+
+        public bool TryPickUp()
+        {
+            if (wasCollected || itemDefinition == null)
+            {
+                return false;
+            }
+
+            wasCollected = GameManager.Instance.CollectLootItem(itemDefinition);
+            if (!wasCollected)
+            {
+                return false;
+            }
+
+            Destroy(gameObject);
+            return true;
+        }
+
+        private void EnsureComponents()
+        {
+            if (spriteRenderer == null)
+            {
+                spriteRenderer = GetComponent<SpriteRenderer>();
+            }
+
+            if (pickupCollider == null)
+            {
+                pickupCollider = GetComponent<CircleCollider2D>();
+                pickupCollider.isTrigger = true;
+                pickupCollider.radius = PickupRadius;
+            }
+        }
+
+        private void ConfigureVisual()
+        {
+            spriteRenderer.sprite = LootItemVisuals.GetItemSprite(itemDefinition);
+            spriteRenderer.color = Color.white;
+            spriteRenderer.sortingOrder = 12;
+            transform.localScale = new Vector3(VisualScale, VisualScale, 1f);
+
+            // The collider is larger than the item so you don't have to be directly on top
+            pickupCollider.radius = PickupRadius / VisualScale;
+        }
+
+        private void ConfigurePrompt()
+        {
+            if (promptRoot != null)
+            {
+                return;
+            }
+
+            promptRoot = new GameObject("Pickup Prompt");
+            promptRoot.transform.SetParent(transform, false);
+            promptRoot.transform.localPosition = new Vector3(0f, PromptWorldOffsetY / VisualScale, 0f);
+            promptRoot.transform.localScale = new Vector3(1f / VisualScale, 1f / VisualScale, 1f);
+
+            GameObject background = new GameObject("Prompt Background");
+            background.transform.SetParent(promptRoot.transform, false);
+            background.transform.localScale = new Vector3(2.7f, 0.35f, 1f);
+            SpriteRenderer backgroundRenderer = background.AddComponent<SpriteRenderer>();
+            backgroundRenderer.sprite = LootItemVisuals.GetSquareSprite();
+            backgroundRenderer.color = new Color(0.03f, 0.035f, 0.04f, 0.84f);
+            backgroundRenderer.sortingOrder = 29;
+
+            GameObject textObject = new GameObject("Prompt Text");
+            textObject.transform.SetParent(promptRoot.transform, false);
+            textObject.transform.localPosition = new Vector3(0f, -0.03f, 0f);
+
+            promptText = textObject.AddComponent<TextMesh>();
+            promptText.anchor = TextAnchor.MiddleCenter;
+            promptText.alignment = TextAlignment.Center;
+            promptText.characterSize = 0.055f;
+            promptText.fontSize = 32;
+            promptText.color = new Color(0.98f, 0.96f, 0.88f, 1f);
+
+            MeshRenderer textRenderer = textObject.GetComponent<MeshRenderer>();
+            textRenderer.sortingOrder = 30;
+
+            ConfigurePromptText();
+        }
+
+        private void CaptureBobBasePosition()
+        {
+            bobBasePosition = transform.position;
+            bobPhase = Mathf.Abs(transform.position.x * 0.73f + transform.position.y * 0.41f);
+            hasBobBasePosition = true;
+        }
+
+        private void ApplyBobbing()
+        {
+            if (!hasBobBasePosition)
+            {
+                CaptureBobBasePosition();
+            }
+
+            float bobOffset = Mathf.Sin(Time.time * BobSpeed + bobPhase) * BobAmplitude;
+            transform.position = bobBasePosition + new Vector3(0f, bobOffset, 0f);
+        }
+
+        private void ConfigurePromptText()
+        {
+            if (promptText == null || itemDefinition == null)
+            {
+                return;
+            }
+
+            promptText.text = $"Press E to pick up {itemDefinition.DisplayName}";
+        }
+
+        private void SetPromptVisible(bool isVisible)
+        {
+            if (promptRoot != null)
+            {
+                promptRoot.SetActive(isVisible);
+            }
+        }
+
+        private static bool IsInteractPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            Keyboard keyboard = Keyboard.current;
+            return keyboard != null && keyboard.eKey.wasPressedThisFrame;
+#else
+            return Input.GetKeyDown(KeyCode.E);
+#endif
+        }
+    }
+}

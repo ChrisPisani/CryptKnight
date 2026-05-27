@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using CryptKnight.Application;
 using CryptKnight.Data;
+using CryptKnight.Loot;
 using UnityEngine;
 using UnityEngine.UI;
 #if UNITY_EDITOR
@@ -12,7 +13,6 @@ namespace CryptKnight.UI
     public sealed class RunHUDController : MonoBehaviour
     {
         private static readonly Color HudTextColor = new Color(0.96f, 0.93f, 0.84f, 1f);
-        private static readonly Color ItemIconColor = new Color(0.28f, 0.42f, 0.72f, 1f);
         private static readonly Color ItemPanelColor = new Color(0.06f, 0.06f, 0.075f, 0.72f);
 
         private Font defaultFont;
@@ -178,7 +178,9 @@ namespace CryptKnight.UI
             GameObject iconObject = new GameObject("Icon");
             iconObject.transform.SetParent(stackObject.transform, false);
             Image icon = iconObject.AddComponent<Image>();
-            icon.color = ItemIconColor;
+            icon.sprite = LootItemVisuals.GetItemSprite(itemStack.ItemId);
+            icon.preserveAspect = true;
+            icon.color = Color.white;
 
             RectTransform iconRect = icon.rectTransform;
             iconRect.anchorMin = new Vector2(0.5f, 1f);
@@ -187,8 +189,6 @@ namespace CryptKnight.UI
             iconRect.anchoredPosition = new Vector2(0f, -8f);
             iconRect.sizeDelta = new Vector2(46f, 46f);
 
-            string abbreviation = itemStack.DisplayName.Length <= 2 ? itemStack.DisplayName.ToUpperInvariant() : itemStack.DisplayName.Substring(0, 2).ToUpperInvariant();
-            CreateText(iconObject.transform, "Icon Label", abbreviation, 16, FontStyle.Bold, TextAnchor.MiddleCenter, Color.white, Vector2.zero, new Vector2(42f, 42f));
             CreateText(stackObject.transform, "Quantity", $"x{itemStack.Quantity}", 18, FontStyle.Bold, TextAnchor.MiddleCenter, HudTextColor, new Vector2(0f, -28f), new Vector2(66f, 28f));
         }
 

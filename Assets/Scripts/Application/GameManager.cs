@@ -1,5 +1,6 @@
 using System;
 using CryptKnight.Data;
+using CryptKnight.Loot;
 using UnityEngine;
 
 namespace CryptKnight.Application
@@ -126,6 +127,22 @@ namespace CryptKnight.Application
 
             CurrentRun.AddCollectedItem(itemId, displayName, quantity);
             RunStateChanged?.Invoke(CurrentRun);
+        }
+
+        public bool CollectLootItem(LootItemDefinition itemDefinition)
+        {
+            if (CurrentRun == null)
+            {
+                return false;
+            }
+
+            bool collected = LootItemCollector.ApplyToRun(CurrentRun, itemDefinition);
+            if (collected)
+            {
+                RunStateChanged?.Invoke(CurrentRun);
+            }
+
+            return collected;
         }
 
         public void AddStatModifier(PlayerStatModifier modifier)

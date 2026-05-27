@@ -1,6 +1,7 @@
 using CryptKnight.Application;
 using CryptKnight.Data;
 using CryptKnight.Enemies;
+using CryptKnight.Loot;
 using CryptKnight.Player;
 using UnityEngine;
 #if ENABLE_INPUT_SYSTEM
@@ -84,6 +85,7 @@ namespace CryptKnight.Gameplay
             CreateRoomWalls(gameplayRoot.transform);
             Transform player = CreatePlayer(gameplayRoot.transform);
             CreateTestEnemy(gameplayRoot.transform, player);
+            CreateTestLootPickups(gameplayRoot.transform);
             FrameCamera();
         }
 
@@ -150,6 +152,36 @@ namespace CryptKnight.Gameplay
             enemy.AddComponent<CircleCollider2D>().radius = 0.45f;
             enemy.AddComponent<EnemyHealth>();
             enemy.AddComponent<TestEnemyShooter>().Initialize(player);
+        }
+
+        private void CreateTestLootPickups(Transform parent)
+        {
+            LootTableConfiguration lootTable = LootTableConfiguration.CreateDefault();
+            Vector2[] spawnPositions =
+            {
+                new Vector2(-5.0f, 2.45f),
+                new Vector2(-3.1f, 1.45f),
+                new Vector2(-1.2f, 2.45f),
+                new Vector2(2.1f, 2.45f),
+                new Vector2(4.2f, 1.45f)
+            };
+
+            int pickupCount = Mathf.Min(lootTable.Items.Count, spawnPositions.Length);
+            for (int i = 0; i < pickupCount; i++)
+            {
+                CreateLootPickup(parent, lootTable.Items[i], spawnPositions[i]);
+            }
+        }
+
+        private void CreateLootPickup(Transform parent, LootItemDefinition itemDefinition, Vector2 position)
+        {
+            GameObject pickupObject = new GameObject($"Pickup {itemDefinition.DisplayName}");
+            pickupObject.transform.SetParent(parent, false);
+            pickupObject.transform.position = position;
+
+            pickupObject.AddComponent<SpriteRenderer>();
+            pickupObject.AddComponent<CircleCollider2D>();
+            pickupObject.AddComponent<LootPickup>().Initialize(itemDefinition);
         }
 
         private static GameObject CreateSpriteObject(string objectName, Transform parent, Vector2 position, Vector2 scale, Color color)

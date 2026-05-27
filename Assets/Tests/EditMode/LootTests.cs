@@ -1,11 +1,30 @@
 using System.Linq;
+using System.Reflection;
+using CryptKnight.Data;
 using CryptKnight.Loot;
 using NUnit.Framework;
+using UnityEngine;
 
 namespace CryptKnight.Tests.EditMode
 {
     public sealed class LootTests
     {
+        private readonly System.Collections.Generic.List<Object> createdObjects = new System.Collections.Generic.List<Object>();
+
+        [TearDown]
+        public void TearDown()
+        {
+            for (int i = createdObjects.Count - 1; i >= 0; i--)
+            {
+                if (createdObjects[i] != null)
+                {
+                    Object.DestroyImmediate(createdObjects[i]);
+                }
+            }
+
+            createdObjects.Clear();
+        }
+
         [Test]
         public void DefaultItemsExist()
         {
@@ -112,6 +131,179 @@ namespace CryptKnight.Tests.EditMode
             Assert.That(item.StatModifier.DamageBonus, Is.EqualTo(2));
             Assert.That(item.StatModifier.MovementSpeedBonus, Is.EqualTo(0.5f));
             Assert.That(item.StatModifier.AttackRateBonus, Is.EqualTo(0.1f));
+        }
+
+        [Test]
+        public void CollectorAppliesItemBenefitsToRun()
+        {
+            GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, new PlayerBaseStats(6, 1, 5f, 1f));
+            LootItemDefinition item = new LootItemDefinition(
+                "test_relic",
+                "Test Relic",
+                "Used by tests to prove item pickup effects apply.",
+                new PlayerStatModifier(maxHealthBonus: 2, damageBonus: 3),
+                new[] { LootSourceType.Chest },
+                keyAmount: 2);
+
+            bool applied = LootItemCollector.ApplyToRun(runState, item);
+
+            Assert.That(applied, Is.True);
+            Assert.That(runState.MaxHealth, Is.EqualTo(8));
+            Assert.That(runState.CurrentHealth, Is.EqualTo(8));
+            Assert.That(runState.PlayerStats.Damage, Is.EqualTo(4));
+            Assert.That(runState.KeyCount, Is.EqualTo(2));
+            Assert.That(runState.CollectedItems, Has.Count.EqualTo(1));
+            Assert.That(runState.CollectedItems[0].ItemId, Is.EqualTo("test_relic"));
+        }
+
+        [Test]
+        public void CollectorAddsKeysOnlyToKeyCounter()
+        {
+            GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, new PlayerBaseStats(6, 1, 5f, 1f));
+            LootItemDefinition key = new LootItemDefinition(
+                "key",
+                "Key",
+                "Gain 1 key.",
+                new PlayerStatModifier(),
+                new[] { LootSourceType.Chest },
+                keyAmount: 1);
+
+            bool applied = LootItemCollector.ApplyToRun(runState, key);
+
+            Assert.That(applied, Is.True);
+            Assert.That(runState.KeyCount, Is.EqualTo(1));
+            Assert.That(runState.CollectedItems, Is.Empty);
+        }
+
+        [Test]
+        public void CollectorIgnoresInactiveRuns()
+        {
+            GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, new PlayerBaseStats(6, 1, 5f, 1f));
+            runState.QuitRun();
+
+            LootItemDefinition item = new LootItemDefinition(
+                "inactive_relic",
+                "Inactive Relic",
+                string.Empty,
+                new PlayerStatModifier(damageBonus: 3),
+                new[] { LootSourceType.Chest },
+                keyAmount: 2);
+
+            bool applied = LootItemCollector.ApplyToRun(runState, item);
+
+            Assert.That(applied, Is.False);
+            Assert.That(runState.PlayerStats.Damage, Is.EqualTo(1));
+            Assert.That(runState.KeyCount, Is.EqualTo(0));
+            Assert.That(runState.CollectedItems, Is.Empty);
+        }
+
+        [Test]
+        public void FallbackColorsMatchDefaultItemRepresentations()
+        {
+            AssertColor(LootItemVisuals.GetFallbackColor("heart_container"), new Color(0.88f, 0.06f, 0.08f, 1f));
+            AssertColor(LootItemVisuals.GetFallbackColor("damage_up"), new Color(0.12f, 0.70f, 0.25f, 1f));
+            AssertColor(LootItemVisuals.GetFallbackColor("speed_up"), new Color(0.98f, 0.84f, 0.16f, 1f));
+            AssertColor(LootItemVisuals.GetFallbackColor("attack_rate_up"), new Color(0.95f, 0.42f, 0.10f, 1f));
+        }
+
+        [Test]
+        public void CollectedItemSpritesExistForDefaultItems()
+        {
+            string[] itemIds =
+            {
+                "heart_container",
+                "damage_up",
+                "speed_up",
+                "attack_rate_up",
+                "key"
+            };
+
+            foreach (string itemId in itemIds)
+            {
+                Assert.That(LootItemVisuals.GetItemSprite(itemId), Is.Not.Null, itemId);
+            }
+        }
+
+        [Test]
+        public void PickupVisualIsHalfSizedWithoutShrinkingInteractionRange()
+        {
+            LootItemDefinition item = new LootItemDefinition(
+                "test_relic",
+                "Test Relic",
+                string.Empty,
+                new PlayerStatModifier(),
+                new[] { LootSourceType.Chest });
+
+            LootPickup pickup = CreatePickup(item);
+            CircleCollider2D pickupCollider = pickup.GetComponent<CircleCollider2D>();
+
+            Assert.That(pickup.transform.localScale.x, Is.EqualTo(0.5f).Within(0.001f));
+            Assert.That(pickup.transform.localScale.y, Is.EqualTo(0.5f).Within(0.001f));
+            Assert.That(pickupCollider.radius * pickup.transform.localScale.x, Is.EqualTo(1.05f).Within(0.001f));
+        }
+
+        [Test]
+        public void PickupPromptOnlyShowsWhenPlayerIsInRange()
+        {
+            LootItemDefinition item = new LootItemDefinition(
+                "test_relic",
+                "Test Relic",
+                string.Empty,
+                new PlayerStatModifier(),
+                new[] { LootSourceType.Chest });
+
+            LootPickup pickup = CreatePickup(item);
+            Collider2D playerCollider = CreatePlayerCollider();
+
+            Assert.That(pickup.IsPromptVisible, Is.False);
+
+            InvokeTrigger(pickup, "OnTriggerEnter2D", playerCollider);
+
+            Assert.That(pickup.IsPlayerInRange, Is.True);
+            Assert.That(pickup.IsPromptVisible, Is.True);
+
+            InvokeTrigger(pickup, "OnTriggerExit2D", playerCollider);
+
+            Assert.That(pickup.IsPlayerInRange, Is.False);
+            Assert.That(pickup.IsPromptVisible, Is.False);
+        }
+
+        private LootPickup CreatePickup(LootItemDefinition item)
+        {
+            GameObject pickupObject = new GameObject("Test Pickup");
+            createdObjects.Add(pickupObject);
+
+            pickupObject.AddComponent<SpriteRenderer>();
+            pickupObject.AddComponent<CircleCollider2D>();
+            LootPickup pickup = pickupObject.AddComponent<LootPickup>();
+            pickup.Initialize(item);
+            return pickup;
+        }
+
+        private Collider2D CreatePlayerCollider()
+        {
+            GameObject playerObject = new GameObject("Test Player");
+            createdObjects.Add(playerObject);
+
+            playerObject.AddComponent<Rigidbody2D>();
+            CircleCollider2D playerCollider = playerObject.AddComponent<CircleCollider2D>();
+            playerObject.AddComponent<CryptKnight.Player.PlayerController>();
+            return playerCollider;
+        }
+
+        private static void InvokeTrigger(LootPickup pickup, string methodName, Collider2D other)
+        {
+            MethodInfo method = typeof(LootPickup).GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(method, Is.Not.Null);
+            method.Invoke(pickup, new object[] { other });
+        }
+
+        private static void AssertColor(Color actual, Color expected)
+        {
+            Assert.That(actual.r, Is.EqualTo(expected.r).Within(0.001f));
+            Assert.That(actual.g, Is.EqualTo(expected.g).Within(0.001f));
+            Assert.That(actual.b, Is.EqualTo(expected.b).Within(0.001f));
+            Assert.That(actual.a, Is.EqualTo(expected.a).Within(0.001f));
         }
     }
 }
