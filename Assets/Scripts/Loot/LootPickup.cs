@@ -37,6 +37,7 @@ namespace CryptKnight.Loot
             itemDefinition = definition;
             EnsureComponents();
             ConfigureVisual();
+            ConfigurePrompt();
             ConfigurePromptText();
             SetPromptVisible(false);
             CaptureBobBasePosition();
