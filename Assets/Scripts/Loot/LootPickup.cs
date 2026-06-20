@@ -1,4 +1,5 @@
 using CryptKnight.Application;
+using CryptKnight.Audio;
 using CryptKnight.Player;
 using UnityEngine;
 #if ENABLE_INPUT_SYSTEM
@@ -12,7 +13,9 @@ namespace CryptKnight.Loot
     public sealed class LootPickup : MonoBehaviour
     {
         private const float PickupRadius = 1.05f;
-        private const float VisualScale = 0.5f;
+        private const float DefaultVisualScale = 0.28f;
+        private const float KeyVisualScale = 0.8f;
+        private const string KeyItemId = "key";
         private const float PromptWorldOffsetY = 1.1f;
         private const float BobAmplitude = 0.08f;
         private const float BobSpeed = 3.2f;
@@ -28,6 +31,7 @@ namespace CryptKnight.Loot
         private bool hasBobBasePosition;
         private int playersInRange;
         private bool wasCollected;
+        private float visualScale = DefaultVisualScale;
 
         public LootItemDefinition ItemDefinition => itemDefinition;
         public bool IsPlayerInRange => playersInRange > 0;
@@ -54,6 +58,11 @@ namespace CryptKnight.Loot
         private void Update()
         {
             ApplyBobbing();
+
+            if (GameManager.Instance.IsGameplayPaused)
+            {
+                return;
+            }
 
             if (IsPlayerInRange && IsInteractPressed())
             {
@@ -96,6 +105,7 @@ namespace CryptKnight.Loot
                 return false;
             }
 
+            GameSfxPlayer.PlayItemPowerupPickup();
             Destroy(gameObject);
             return true;
         }
@@ -117,26 +127,27 @@ namespace CryptKnight.Loot
 
         private void ConfigureVisual()
         {
+            visualScale = GetVisualScale(itemDefinition);
             spriteRenderer.sprite = LootItemVisuals.GetItemSprite(itemDefinition);
             spriteRenderer.color = Color.white;
             spriteRenderer.sortingOrder = PickupSortingOrder;
-            transform.localScale = new Vector3(VisualScale, VisualScale, 1f);
+            transform.localScale = new Vector3(visualScale, visualScale, 1f);
 
             // The collider is larger than the item so you don't have to be directly on top
-            pickupCollider.radius = PickupRadius / VisualScale;
+            pickupCollider.radius = PickupRadius / visualScale;
         }
 
         private void ConfigurePrompt()
         {
             if (promptRoot != null)
             {
+                ApplyPromptTransform();
                 return;
             }
 
             promptRoot = new GameObject("Pickup Prompt");
             promptRoot.transform.SetParent(transform, false);
-            promptRoot.transform.localPosition = new Vector3(0f, PromptWorldOffsetY / VisualScale, 0f);
-            promptRoot.transform.localScale = new Vector3(1f / VisualScale, 1f / VisualScale, 1f);
+            ApplyPromptTransform();
 
             GameObject background = new GameObject("Prompt Background");
             background.transform.SetParent(promptRoot.transform, false);
@@ -161,6 +172,12 @@ namespace CryptKnight.Loot
             textRenderer.sortingOrder = 30;
 
             ConfigurePromptText();
+        }
+
+        private void ApplyPromptTransform()
+        {
+            promptRoot.transform.localPosition = new Vector3(0f, PromptWorldOffsetY / visualScale, 0f);
+            promptRoot.transform.localScale = new Vector3(1f / visualScale, 1f / visualScale, 1f);
         }
 
         private void CaptureBobBasePosition()
@@ -207,6 +224,11 @@ namespace CryptKnight.Loot
 #else
             return Input.GetKeyDown(KeyCode.E);
 #endif
+        }
+
+        private static float GetVisualScale(LootItemDefinition itemDefinition)
+        {
+            return itemDefinition != null && itemDefinition.ItemId == KeyItemId ? KeyVisualScale : DefaultVisualScale;
         }
     }
 }

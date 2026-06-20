@@ -1,10 +1,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using CryptKnight.Application;
+using CryptKnight.Audio;
 using CryptKnight.Data;
 using CryptKnight.Loot;
 using UnityEngine;
 using UnityEngine.UI;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
@@ -13,6 +17,15 @@ namespace CryptKnight.UI
 {
     public sealed class RunPauseMenuController : MonoBehaviour
     {
+        private const string BloodlinesPanelSpritePath = "Assets/Art/UI/Bloodlines/Frames/Frame_main_menu_red.png";
+        private const string BloodlinesButtonDefaultPath = "Assets/Art/UI/Bloodlines/Buttons/Status_Red_Default.png";
+        private const string BloodlinesButtonHoverPath = "Assets/Art/UI/Bloodlines/Buttons/Status_Red_Hover.png";
+        private const string BloodlinesButtonPressedPath = "Assets/Art/UI/Bloodlines/Buttons/Status_Pressed.png";
+        private const string BloodlinesButtonDisabledPath = "Assets/Art/UI/Bloodlines/Buttons/Status_Disable.png";
+        private const string BloodlinesSliderEmptyPath = "Assets/Art/UI/Bloodlines/Sliders/Slider_empty.png";
+        private const string BloodlinesSliderFullPath = "Assets/Art/UI/Bloodlines/Sliders/Slider_full_v1.png";
+        private const string BloodlinesSliderHandlePath = "Assets/Art/UI/Bloodlines/Sliders/Slider_toggler.png";
+
         private static readonly Color OverlayColor = new Color(0.01f, 0.012f, 0.016f, 0.82f);
         private static readonly Color PanelColor = new Color(0.10f, 0.10f, 0.13f, 0.97f);
         private static readonly Color ItemSlotColor = new Color(0.16f, 0.16f, 0.20f, 0.92f);
@@ -21,17 +34,35 @@ namespace CryptKnight.UI
         private static readonly Color MutedTextColor = new Color(0.72f, 0.70f, 0.64f, 1f);
         private static readonly Color ButtonColor = new Color(0.65f, 0.12f, 0.12f, 1f);
         private static readonly Color ButtonHoverColor = new Color(0.82f, 0.18f, 0.16f, 1f);
+        private static readonly Color GoldColor = new Color(0.86f, 0.61f, 0.24f, 1f);
+        private static readonly Color TextOutlineColor = new Color(0.025f, 0.018f, 0.014f, 0.92f);
+        private static readonly Color TextShadowColor = new Color(0f, 0f, 0f, 0.78f);
 
         private Font defaultFont;
         private GameObject pauseRoot;
         private Transform itemListRoot;
+        private GameObject settingsRoot;
         private GameObject tooltipRoot;
         private Text tooltipTitle;
         private Text tooltipBody;
         private Text statsText;
+        private Text masterVolumeValueText;
+        private Text musicVolumeValueText;
+        private Text gameSoundsVolumeValueText;
+        private Slider masterVolumeSlider;
+        private Slider musicVolumeSlider;
+        private Slider gameSoundsVolumeSlider;
         private LootTableConfiguration lootTable;
         private bool isPaused;
         private string lastItemSignature = string.Empty;
+        private static Sprite bloodlinesPanelSprite;
+        private static Sprite bloodlinesButtonDefaultSprite;
+        private static Sprite bloodlinesButtonHoverSprite;
+        private static Sprite bloodlinesButtonPressedSprite;
+        private static Sprite bloodlinesButtonDisabledSprite;
+        private static Sprite bloodlinesSliderEmptySprite;
+        private static Sprite bloodlinesSliderFullSprite;
+        private static Sprite bloodlinesSliderHandleSprite;
 
         public bool IsPaused => isPaused;
 
@@ -41,6 +72,7 @@ namespace CryptKnight.UI
             lootTable = LootTableConfiguration.CreateDefault();
             BuildPauseMenu(parent);
 
+            GameAudioSettings.VolumesChanged += HandleAudioSettingsChanged;
             GameManager.Instance.RunStateChanged += HandleRunStateChanged;
             HandleRunStateChanged(GameManager.Instance.CurrentRun);
         }
@@ -53,6 +85,7 @@ namespace CryptKnight.UI
             }
 
             ResumeGame();
+            GameAudioSettings.VolumesChanged -= HandleAudioSettingsChanged;
         }
 
         private void Update()
@@ -119,7 +152,9 @@ namespace CryptKnight.UI
 
             GameObject panel = CreatePanel(pauseRoot.transform, "Pause Panel", new Vector2(980f, 680f), PanelColor);
             CreateText(panel.transform, "Title", "PAUSED", 46, FontStyle.Bold, TextAnchor.MiddleCenter, TextColor, new Vector2(0f, 280f), new Vector2(880f, 60f));
-            CreateButton(panel.transform, "Quit Run Button", "QUIT RUN", new Vector2(0f, -280f), QuitRun);
+            CreateButton(panel.transform, "Unpause Button", "UNPAUSE", new Vector2(-250f, -280f), Unpause);
+            CreateButton(panel.transform, "Settings Button", "SETTINGS", new Vector2(0f, -280f), ShowSettings);
+            CreateButton(panel.transform, "Quit Run Button", "QUIT RUN", new Vector2(250f, -280f), QuitRun);
 
             CreateText(panel.transform, "Items Heading", "Collected Items", 24, FontStyle.Bold, TextAnchor.MiddleLeft, TextColor, new Vector2(-210f, 206f), new Vector2(500f, 40f));
             GameObject itemPanel = CreatePanel(panel.transform, "Collected Items Panel", new Vector2(500f, 320f), new Color(0.06f, 0.06f, 0.075f, 0.92f));
@@ -134,12 +169,34 @@ namespace CryptKnight.UI
 
             tooltipRoot = CreatePanel(panel.transform, "Item Tooltip", new Vector2(360f, 210f), new Color(0.075f, 0.075f, 0.095f, 0.96f));
             tooltipRoot.GetComponent<RectTransform>().anchoredPosition = new Vector2(270f, -128f);
-            tooltipTitle = CreateText(tooltipRoot.transform, "Tooltip Title", string.Empty, 22, FontStyle.Bold, TextAnchor.MiddleLeft, TextColor, new Vector2(0f, 88f), new Vector2(300f, 42f));
+            tooltipTitle = CreateText(tooltipRoot.transform, "Tooltip Title", string.Empty, 22, FontStyle.Bold, TextAnchor.MiddleLeft, TextColor, new Vector2(0f, 78f), new Vector2(300f, 42f));
             tooltipBody = CreateText(tooltipRoot.transform, "Tooltip Body", string.Empty, 18, FontStyle.Normal, TextAnchor.UpperLeft, MutedTextColor, new Vector2(0f, -28f), new Vector2(300f, 140f));
             tooltipBody.verticalOverflow = VerticalWrapMode.Overflow;
             tooltipRoot.SetActive(false);
 
+            settingsRoot = CreateSettingsPanel(panel.transform);
+            settingsRoot.SetActive(false);
+
             pauseRoot.SetActive(false);
+        }
+
+        private GameObject CreateSettingsPanel(Transform parent)
+        {
+            GameObject panel = CreatePanel(parent, "Settings Panel", new Vector2(560f, 420f), new Color(0.055f, 0.052f, 0.065f, 0.99f));
+            panel.transform.SetAsLastSibling();
+
+            Outline outline = panel.AddComponent<Outline>();
+            outline.effectColor = GoldColor;
+            outline.effectDistance = new Vector2(2f, -2f);
+
+            CreateText(panel.transform, "Settings Title", "SETTINGS", 34, FontStyle.Bold, TextAnchor.MiddleCenter, TextColor, new Vector2(0f, 156f), new Vector2(460f, 48f));
+            masterVolumeSlider = CreateAudioSliderRow(panel.transform, "MASTER", new Vector2(0f, 82f), GameAudioSettings.MasterVolume, GameAudioSettings.SetMasterVolume, out masterVolumeValueText);
+            musicVolumeSlider = CreateAudioSliderRow(panel.transform, "MUSIC", new Vector2(0f, 8f), GameAudioSettings.MusicVolume, GameAudioSettings.SetMusicVolume, out musicVolumeValueText);
+            gameSoundsVolumeSlider = CreateAudioSliderRow(panel.transform, "GAME SOUNDS", new Vector2(0f, -66f), GameAudioSettings.GameSoundsVolume, GameAudioSettings.SetGameSoundsVolume, out gameSoundsVolumeValueText);
+            RefreshSettingsValues();
+
+            CreateButton(panel.transform, "Close Settings Button", "CLOSE", new Vector2(0f, -160f), HideSettings);
+            return panel;
         }
 
         private void RefreshStats(GameRunState runState)
@@ -225,16 +282,55 @@ namespace CryptKnight.UI
             }
 
             Time.timeScale = isPaused ? 0f : 1f;
+            GameManager.Instance.SetGameplayPaused(isPaused);
             if (!isPaused)
             {
                 HideItemTooltip();
+                HideSettings();
             }
+        }
+
+        private void Unpause()
+        {
+            SetPaused(false);
         }
 
         private void ResumeGame()
         {
             isPaused = false;
             Time.timeScale = 1f;
+            if (pauseRoot != null)
+            {
+                pauseRoot.SetActive(false);
+            }
+
+            if (GameManager.HasInstance)
+            {
+                GameManager.Instance.SetGameplayPaused(false);
+            }
+        }
+
+        private void ShowSettings()
+        {
+            if (settingsRoot != null)
+            {
+                RefreshSettingsValues();
+                settingsRoot.SetActive(true);
+                settingsRoot.transform.SetAsLastSibling();
+            }
+        }
+
+        private void HideSettings()
+        {
+            if (settingsRoot != null)
+            {
+                settingsRoot.SetActive(false);
+            }
+        }
+
+        private void HandleAudioSettingsChanged()
+        {
+            RefreshSettingsValues();
         }
 
         private void QuitRun()
@@ -259,13 +355,115 @@ namespace CryptKnight.UI
             return string.Join("|", parts);
         }
 
+        private static Sprite LoadBloodlinesSprite(string assetPath)
+        {
+#if UNITY_EDITOR
+            Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+            if (sprite != null)
+            {
+                return sprite;
+            }
+
+            UnityEngine.Object[] assets = AssetDatabase.LoadAllAssetsAtPath(assetPath);
+            for (int i = 0; i < assets.Length; i++)
+            {
+                if (assets[i] is Sprite childSprite)
+                {
+                    return childSprite;
+                }
+            }
+#endif
+
+            return null;
+        }
+
+        private static Sprite GetBloodlinesPanelSprite()
+        {
+            if (bloodlinesPanelSprite == null)
+            {
+                bloodlinesPanelSprite = LoadBloodlinesSprite(BloodlinesPanelSpritePath);
+            }
+
+            return bloodlinesPanelSprite;
+        }
+
+        private static Sprite GetBloodlinesButtonDefaultSprite()
+        {
+            if (bloodlinesButtonDefaultSprite == null)
+            {
+                bloodlinesButtonDefaultSprite = LoadBloodlinesSprite(BloodlinesButtonDefaultPath);
+            }
+
+            return bloodlinesButtonDefaultSprite;
+        }
+
+        private static Sprite GetBloodlinesButtonHoverSprite()
+        {
+            if (bloodlinesButtonHoverSprite == null)
+            {
+                bloodlinesButtonHoverSprite = LoadBloodlinesSprite(BloodlinesButtonHoverPath);
+            }
+
+            return bloodlinesButtonHoverSprite;
+        }
+
+        private static Sprite GetBloodlinesButtonPressedSprite()
+        {
+            if (bloodlinesButtonPressedSprite == null)
+            {
+                bloodlinesButtonPressedSprite = LoadBloodlinesSprite(BloodlinesButtonPressedPath);
+            }
+
+            return bloodlinesButtonPressedSprite;
+        }
+
+        private static Sprite GetBloodlinesButtonDisabledSprite()
+        {
+            if (bloodlinesButtonDisabledSprite == null)
+            {
+                bloodlinesButtonDisabledSprite = LoadBloodlinesSprite(BloodlinesButtonDisabledPath);
+            }
+
+            return bloodlinesButtonDisabledSprite;
+        }
+
+        private static Sprite GetBloodlinesSliderEmptySprite()
+        {
+            if (bloodlinesSliderEmptySprite == null)
+            {
+                bloodlinesSliderEmptySprite = LoadBloodlinesSprite(BloodlinesSliderEmptyPath);
+            }
+
+            return bloodlinesSliderEmptySprite;
+        }
+
+        private static Sprite GetBloodlinesSliderFullSprite()
+        {
+            if (bloodlinesSliderFullSprite == null)
+            {
+                bloodlinesSliderFullSprite = LoadBloodlinesSprite(BloodlinesSliderFullPath);
+            }
+
+            return bloodlinesSliderFullSprite;
+        }
+
+        private static Sprite GetBloodlinesSliderHandleSprite()
+        {
+            if (bloodlinesSliderHandleSprite == null)
+            {
+                bloodlinesSliderHandleSprite = LoadBloodlinesSprite(BloodlinesSliderHandlePath);
+            }
+
+            return bloodlinesSliderHandleSprite;
+        }
+
         private GameObject CreatePanel(Transform parent, string objectName, Vector2 size, Color color)
         {
             GameObject panelObject = new GameObject(objectName);
             panelObject.transform.SetParent(parent, false);
 
             Image panel = panelObject.AddComponent<Image>();
-            panel.color = color;
+            StylePanel(panel, size, color);
 
             RectTransform rectTransform = panel.rectTransform;
             rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
@@ -275,6 +473,21 @@ namespace CryptKnight.UI
             rectTransform.sizeDelta = size;
 
             return panelObject;
+        }
+
+        private static void StylePanel(Image panel, Vector2 size, Color fallbackColor)
+        {
+            Sprite sprite = size.x >= 140f && size.y >= 70f ? GetBloodlinesPanelSprite() : null;
+            if (sprite != null)
+            {
+                panel.sprite = sprite;
+                panel.type = sprite.border.sqrMagnitude > 0f ? Image.Type.Sliced : Image.Type.Simple;
+                panel.preserveAspect = false;
+                panel.color = Color.white;
+                return;
+            }
+
+            panel.color = fallbackColor;
         }
 
         private Text CreateText(Transform parent, string objectName, string text, int fontSize, FontStyle fontStyle, TextAnchor alignment, Color color, Vector2 position, Vector2 size)
@@ -291,6 +504,7 @@ namespace CryptKnight.UI
             textComponent.color = color;
             textComponent.horizontalOverflow = HorizontalWrapMode.Wrap;
             textComponent.verticalOverflow = VerticalWrapMode.Truncate;
+            ApplyDungeonTextStyle(textObject, fontSize);
 
             RectTransform rectTransform = textComponent.rectTransform;
             rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
@@ -302,6 +516,17 @@ namespace CryptKnight.UI
             return textComponent;
         }
 
+        private static void ApplyDungeonTextStyle(GameObject textObject, int fontSize)
+        {
+            Outline outline = textObject.AddComponent<Outline>();
+            outline.effectColor = TextOutlineColor;
+            outline.effectDistance = fontSize >= 30 ? new Vector2(2f, -2f) : new Vector2(1.1f, -1.1f);
+
+            Shadow shadow = textObject.AddComponent<Shadow>();
+            shadow.effectColor = TextShadowColor;
+            shadow.effectDistance = fontSize >= 30 ? new Vector2(3f, -3f) : new Vector2(2f, -2f);
+        }
+
         private void CreateQuantityBadge(Transform parent, int quantity, Vector2 position)
         {
             GameObject badgeObject = CreatePanel(parent, "Quantity Badge", new Vector2(32f, 22f), QuantityBadgeColor);
@@ -309,6 +534,31 @@ namespace CryptKnight.UI
             badgeObject.GetComponent<RectTransform>().anchoredPosition = position;
             Text badgeText = CreateText(badgeObject.transform, "Quantity", $"x{quantity}", 13, FontStyle.Bold, TextAnchor.MiddleCenter, TextColor, Vector2.zero, new Vector2(30f, 20f));
             badgeText.raycastTarget = false;
+        }
+
+        private static bool TryStyleBloodlinesButton(Image image, Button button)
+        {
+            Sprite normalSprite = GetBloodlinesButtonDefaultSprite();
+            if (normalSprite == null)
+            {
+                return false;
+            }
+
+            // Bloodlines button art includes its own border, so sprite swap handles hover states cleanly.
+            image.sprite = normalSprite;
+            image.type = Image.Type.Simple;
+            image.preserveAspect = true;
+            image.color = Color.white;
+
+            button.transition = Selectable.Transition.SpriteSwap;
+            button.spriteState = new SpriteState
+            {
+                highlightedSprite = GetBloodlinesButtonHoverSprite(),
+                pressedSprite = GetBloodlinesButtonPressedSprite(),
+                disabledSprite = GetBloodlinesButtonDisabledSprite()
+            };
+
+            return true;
         }
 
         private void CreateButton(Transform parent, string objectName, string label, Vector2 position, UnityEngine.Events.UnityAction onClick)
@@ -332,16 +582,149 @@ namespace CryptKnight.UI
                 colorMultiplier = 1f,
                 fadeDuration = 0.08f
             };
+            bool hasBloodlinesStyle = TryStyleBloodlinesButton(image, button);
 
             RectTransform rectTransform = image.rectTransform;
             rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
             rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
             rectTransform.pivot = new Vector2(0.5f, 0.5f);
             rectTransform.anchoredPosition = position;
-            rectTransform.sizeDelta = new Vector2(220f, 56f);
+            rectTransform.sizeDelta = hasBloodlinesStyle ? new Vector2(236f, 72f) : new Vector2(220f, 56f);
 
             Text buttonText = CreateText(buttonObject.transform, "Label", label, 20, FontStyle.Bold, TextAnchor.MiddleCenter, Color.white, Vector2.zero, new Vector2(200f, 44f));
             buttonText.raycastTarget = false;
+        }
+
+        private Slider CreateAudioSliderRow(Transform parent, string label, Vector2 position, float value, UnityEngine.Events.UnityAction<float> onChanged, out Text valueText)
+        {
+            CreateText(parent, $"{label} Label", label, 19, FontStyle.Bold, TextAnchor.MiddleLeft, TextColor, position + new Vector2(-154f, 18f), new Vector2(200f, 30f));
+            valueText = CreateText(parent, $"{label} Value", string.Empty, 17, FontStyle.Normal, TextAnchor.MiddleRight, MutedTextColor, position + new Vector2(174f, 18f), new Vector2(90f, 28f));
+
+            Slider slider = CreateSlider(parent, $"{label} Slider", position + new Vector2(0f, -18f), new Vector2(380f, 24f), onChanged);
+            slider.value = value;
+            return slider;
+        }
+
+        private Slider CreateSlider(Transform parent, string objectName, Vector2 position, Vector2 size, UnityEngine.Events.UnityAction<float> onChanged)
+        {
+            GameObject sliderObject = new GameObject(objectName);
+            sliderObject.transform.SetParent(parent, false);
+
+            RectTransform rectTransform = sliderObject.AddComponent<RectTransform>();
+            rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+            rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+            rectTransform.pivot = new Vector2(0.5f, 0.5f);
+            rectTransform.anchoredPosition = position;
+            rectTransform.sizeDelta = size;
+
+            Slider slider = sliderObject.AddComponent<Slider>();
+            slider.minValue = 0f;
+            slider.maxValue = 1f;
+            slider.wholeNumbers = false;
+            slider.onValueChanged.AddListener(onChanged);
+
+            Image background = CreateSliderPart(sliderObject.transform, "Background", Vector2.zero, size, new Color(0.025f, 0.022f, 0.024f, 1f));
+            ApplyBloodlinesSprite(background, GetBloodlinesSliderEmptySprite());
+            slider.targetGraphic = background;
+
+            GameObject fillArea = new GameObject("Fill Area");
+            fillArea.transform.SetParent(sliderObject.transform, false);
+            RectTransform fillAreaRect = fillArea.AddComponent<RectTransform>();
+            fillAreaRect.anchorMin = Vector2.zero;
+            fillAreaRect.anchorMax = Vector2.one;
+            fillAreaRect.offsetMin = new Vector2(7f, 0f);
+            fillAreaRect.offsetMax = new Vector2(-7f, 0f);
+
+            Image fill = CreateSliderPart(fillArea.transform, "Fill", Vector2.zero, Vector2.zero, GoldColor);
+            ApplyBloodlinesSprite(fill, GetBloodlinesSliderFullSprite());
+            ConfigureSliderFill(fill);
+            RectTransform fillRect = fill.rectTransform;
+            fillRect.anchorMin = Vector2.zero;
+            fillRect.anchorMax = Vector2.one;
+            fillRect.offsetMin = Vector2.zero;
+            fillRect.offsetMax = Vector2.zero;
+            slider.fillRect = fillRect;
+
+            GameObject handleArea = new GameObject("Handle Slide Area");
+            handleArea.transform.SetParent(sliderObject.transform, false);
+            RectTransform handleAreaRect = handleArea.AddComponent<RectTransform>();
+            handleAreaRect.anchorMin = Vector2.zero;
+            handleAreaRect.anchorMax = Vector2.one;
+            handleAreaRect.offsetMin = new Vector2(12f, 0f);
+            handleAreaRect.offsetMax = new Vector2(-12f, 0f);
+
+            Image handle = CreateSliderPart(handleArea.transform, "Handle", Vector2.zero, new Vector2(14f, 40f), TextColor);
+            ApplyBloodlinesSprite(handle, GetBloodlinesSliderHandleSprite());
+            slider.handleRect = handle.rectTransform;
+
+            return slider;
+        }
+
+        private static Image CreateSliderPart(Transform parent, string objectName, Vector2 position, Vector2 size, Color color)
+        {
+            GameObject partObject = new GameObject(objectName);
+            partObject.transform.SetParent(parent, false);
+
+            Image image = partObject.AddComponent<Image>();
+            image.color = color;
+
+            RectTransform rectTransform = image.rectTransform;
+            rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+            rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+            rectTransform.pivot = new Vector2(0.5f, 0.5f);
+            rectTransform.anchoredPosition = position;
+            rectTransform.sizeDelta = size;
+
+            return image;
+        }
+
+        private static void ApplyBloodlinesSprite(Image image, Sprite sprite)
+        {
+            if (sprite == null)
+            {
+                return;
+            }
+
+            image.sprite = sprite;
+            image.type = Image.Type.Simple;
+            image.preserveAspect = false;
+            image.color = Color.white;
+        }
+
+        private static void ConfigureSliderFill(Image fill)
+        {
+            // Filled images reveal the existing sprite from left to right instead of resizing it,
+            // which keeps the Bloodlines segment art from stretching as the slider value changes.
+            fill.type = Image.Type.Filled;
+            fill.fillMethod = Image.FillMethod.Horizontal;
+            fill.fillOrigin = (int)Image.OriginHorizontal.Left;
+            fill.fillAmount = 1f;
+        }
+
+        private void RefreshSettingsValues()
+        {
+            SetSliderValue(masterVolumeSlider, GameAudioSettings.MasterVolume);
+            SetSliderValue(musicVolumeSlider, GameAudioSettings.MusicVolume);
+            SetSliderValue(gameSoundsVolumeSlider, GameAudioSettings.GameSoundsVolume);
+            SetVolumeText(masterVolumeValueText, GameAudioSettings.MasterVolume);
+            SetVolumeText(musicVolumeValueText, GameAudioSettings.MusicVolume);
+            SetVolumeText(gameSoundsVolumeValueText, GameAudioSettings.GameSoundsVolume);
+        }
+
+        private static void SetSliderValue(Slider slider, float volume)
+        {
+            if (slider != null)
+            {
+                slider.SetValueWithoutNotify(volume);
+            }
+        }
+
+        private static void SetVolumeText(Text text, float volume)
+        {
+            if (text != null)
+            {
+                text.text = $"{Mathf.RoundToInt(volume * 100f)}%";
+            }
         }
 
         private static bool IsPausePressed()

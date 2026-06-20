@@ -1,0 +1,17 @@
+This folder contains imported Bloodlines UI assets and third-party components governed by the licenses indicated below.
+
+Component Name: MedievalSharp
+License Type: SIL Open Font License, Version 1.1 (OFL-1.1)
+Copyright: Copyright (c) 2011, wmk69 (wmk69@o2.pl), with Reserved Font Name "MedievalSharp"
+License Details:
+- Full license text: Assets/Art/UI/Bloodlines/Fonts/MedievalSharp-OFL.txt
+- Source: https://fonts.google.com/specimen/MedievalSharp
+- Bundled as the original .ttf for in-engine rendering.
+
+OFL Notice:
+The SIL Open Font License permits these fonts to be used, embedded and redistributed
+with this package, including in commercial products. The fonts may not be sold on
+their own, and Reserved Font Names may not be used to name a modified version. The
+bundled OFL.txt file must be kept with the package on redistribution.
+
+All imported Bloodlines artwork and textures in this folder are original work by xGaida and Shieldomirs.

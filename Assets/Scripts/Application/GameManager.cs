@@ -1,4 +1,5 @@
 using System;
+using CryptKnight.Audio;
 using CryptKnight.Data;
 using CryptKnight.Loot;
 using UnityEngine;
@@ -29,6 +30,7 @@ namespace CryptKnight.Application
         public static bool HasInstance => instance != null;
 
         public GameRunState CurrentRun { get; private set; }
+        public bool IsGameplayPaused { get; private set; }
 
         public event Action<GameRunState> RunStateChanged;
 
@@ -47,6 +49,7 @@ namespace CryptKnight.Application
         public GameRunState StartNewRun()
         {
             runCounter++;
+            SetGameplayPaused(false);
 
             int seed = UnityEngine.Random.Range(100000, 999999);
             CurrentRun = GameRunState.CreateNewRun(
@@ -69,8 +72,14 @@ namespace CryptKnight.Application
             }
 
             CurrentRun.QuitRun();
+            SetGameplayPaused(false);
             Debug.Log($"Quit Crypt Knight run {CurrentRun.RunNumber}.");
             RunStateChanged?.Invoke(CurrentRun);
+        }
+
+        public void SetGameplayPaused(bool isPaused)
+        {
+            IsGameplayPaused = isPaused;
         }
 
         public void DamagePlayer(int halfHeartDamage)
@@ -80,7 +89,14 @@ namespace CryptKnight.Application
                 return;
             }
 
+            int previousHealth = CurrentRun.CurrentHealth;
             CurrentRun.ApplyDamage(halfHeartDamage);
+            // Only play feedback if health actually changed
+            if (CurrentRun.CurrentHealth < previousHealth)
+            {
+                GameSfxPlayer.PlayLifeLost();
+            }
+
             RunStateChanged?.Invoke(CurrentRun);
         }
 

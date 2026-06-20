@@ -13,11 +13,15 @@ namespace CryptKnight.Player
         private float moveSpeed = 5f;
 
         private Rigidbody2D body;
+        private PlayerIdleAnimator spriteAnimator;
         private Vector2 moveInput;
+
+        public Vector2 MoveInput => moveInput;
 
         private void Awake()
         {
             body = GetComponent<Rigidbody2D>();
+            spriteAnimator = GetComponentInChildren<PlayerIdleAnimator>();
             body.gravityScale = 0f;
             body.freezeRotation = true;
             body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
@@ -26,7 +30,15 @@ namespace CryptKnight.Player
 
         private void Update()
         {
+            if (GameManager.Instance.IsGameplayPaused)
+            {
+                moveInput = Vector2.zero;
+                spriteAnimator?.SetMovement(Vector2.zero);
+                return;
+            }
+
             moveInput = ReadMoveInput();
+            spriteAnimator?.SetMovement(moveInput);
         }
 
         private void FixedUpdate()

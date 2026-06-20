@@ -12,7 +12,16 @@ namespace CryptKnight.Loot
         private const string KeyItemId = "key";
         private const string KeyAssetPath = "Assets/Art/Items/key.png";
 
+        private static readonly Dictionary<string, string> defaultAssetPathsByItemId = new Dictionary<string, string>
+        {
+            { "heart_container", "Assets/Art/Items/heart_container.png" },
+            { "damage_up", "Assets/Art/Items/damage_up.png" },
+            { "speed_up", "Assets/Art/Items/speed_up.png" },
+            { "attack_rate_up", "Assets/Art/Items/attack_rate_up.png" }
+        };
+
         private static readonly Dictionary<string, Sprite> circleSpritesByItemId = new Dictionary<string, Sprite>();
+        private static readonly Dictionary<string, Sprite> itemSpritesByItemId = new Dictionary<string, Sprite>();
         private static Sprite squareSprite;
         private static Sprite keySprite;
 
@@ -37,14 +46,31 @@ namespace CryptKnight.Loot
 
         public static Sprite GetItemSprite(LootItemDefinition itemDefinition)
         {
-            return GetItemSprite(itemDefinition?.ItemId);
+            if (itemDefinition == null)
+            {
+                return GetCircleSprite(string.Empty);
+            }
+
+            return GetItemSprite(itemDefinition.ItemId, itemDefinition.IconAssetPath);
         }
 
         public static Sprite GetItemSprite(string itemId)
         {
+            string assetPath = defaultAssetPathsByItemId.TryGetValue(itemId ?? string.Empty, out string path) ? path : string.Empty;
+            return GetItemSprite(itemId, assetPath);
+        }
+
+        private static Sprite GetItemSprite(string itemId, string iconAssetPath)
+        {
             if (itemId == KeyItemId)
             {
                 return GetKeySprite() ?? GetCircleSprite(itemId);
+            }
+
+            Sprite configuredSprite = GetConfiguredItemSprite(itemId, iconAssetPath);
+            if (configuredSprite != null)
+            {
+                return configuredSprite;
             }
 
             return GetCircleSprite(itemId);
@@ -93,6 +119,37 @@ namespace CryptKnight.Loot
             keySprite = LoadSpriteAtPath(KeyAssetPath, "key_0") ?? LoadSpriteAtPath(KeyAssetPath, "key");
 #endif
             return keySprite;
+        }
+
+        private static Sprite GetConfiguredItemSprite(string itemId, string iconAssetPath)
+        {
+            string safeItemId = itemId ?? string.Empty;
+            // Missing or bad art falls back to generated circles, hope this doesn't happen but just in case.
+            if (itemSpritesByItemId.TryGetValue(safeItemId, out Sprite cachedSprite))
+            {
+                return cachedSprite;
+            }
+
+            Sprite sprite = null;
+#if UNITY_EDITOR
+            string assetPath = iconAssetPath;
+            if (string.IsNullOrWhiteSpace(assetPath))
+            {
+                defaultAssetPathsByItemId.TryGetValue(safeItemId, out assetPath);
+            }
+
+            if (!string.IsNullOrWhiteSpace(assetPath))
+            {
+                sprite = AssetDatabase.LoadAssetAtPath<Sprite>(assetPath) ?? LoadSpriteAtPath(assetPath, safeItemId);
+            }
+#endif
+
+            if (sprite != null)
+            {
+                itemSpritesByItemId[safeItemId] = sprite;
+            }
+
+            return sprite;
         }
 
 #if UNITY_EDITOR

@@ -1,31 +1,25 @@
 fileFormatVersion: 2
-guid: 98aed15e8d4646b8ace03bc0b517d28b
+guid: f4c8b44303f34df3a20c3fdc1f95d38c
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 1000000000000000001
-    second: knight_0
+      213: 8100000000000000000
+    second: menu_button_settings_normal
   - first:
-      213: 1000000000000000002
-    second: knight_1
+      213: 8100000000000000001
+    second: menu_button_settings_hover
   - first:
-      213: 1000000000000000003
-    second: knight_2
+      213: 8100000000000000002
+    second: menu_button_continue_normal
   - first:
-      213: 1000000000000000004
-    second: knight_3
+      213: 8100000000000000003
+    second: menu_button_continue_hover
   - first:
-      213: 1000000000000000005
-    second: knight_4
+      213: 8100000000000000004
+    second: menu_button_new_run_normal
   - first:
-      213: 1000000000000000006
-    second: knight_5
-  - first:
-      213: 1000000000000000007
-    second: knight_6
-  - first:
-      213: 1000000000000000008
-    second: knight_7
+      213: 8100000000000000005
+    second: menu_button_new_run_hover
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -58,7 +52,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 0
+    filterMode: 1
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -69,12 +63,12 @@ TextureImporter:
   compressionQuality: 50
   spriteMode: 2
   spriteExtrude: 1
-  spriteMeshType: 1
+  spriteMeshType: 0
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
   spritePixelsToUnits: 100
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
-  spriteGenerateFallbackPhysicsShape: 1
+  spriteGenerateFallbackPhysicsShape: 0
   alphaUsage: 1
   alphaIsTransparency: 1
   spriteTessellationDetail: -1
@@ -121,8 +115,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: knight_0
-      rect: {serializedVersion: 2, x: 0, y: 128, width: 64, height: 64}
+      name: menu_button_settings_normal
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 768
+        height: 341
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -131,15 +130,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 10000000000000000000000000000001
-      internalID: 1000000000000000001
+      spriteID: 01000000000000000000000000000000
+      internalID: 8100000000000000000
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: knight_1
-      rect: {serializedVersion: 2, x: 64, y: 128, width: 64, height: 64}
+      name: menu_button_settings_hover
+      rect:
+        serializedVersion: 2
+        x: 768
+        y: 0
+        width: 768
+        height: 341
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -148,15 +152,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 10000000000000000000000000000002
-      internalID: 1000000000000000002
+      spriteID: 02000000000000000000000000000000
+      internalID: 8100000000000000001
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: knight_2
-      rect: {serializedVersion: 2, x: 128, y: 128, width: 64, height: 64}
+      name: menu_button_continue_normal
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 341
+        width: 768
+        height: 342
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -165,15 +174,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 10000000000000000000000000000003
-      internalID: 1000000000000000003
+      spriteID: 03000000000000000000000000000000
+      internalID: 8100000000000000002
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: knight_3
-      rect: {serializedVersion: 2, x: 0, y: 64, width: 64, height: 64}
+      name: menu_button_continue_hover
+      rect:
+        serializedVersion: 2
+        x: 768
+        y: 341
+        width: 768
+        height: 342
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -182,15 +196,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 10000000000000000000000000000004
-      internalID: 1000000000000000004
+      spriteID: 04000000000000000000000000000000
+      internalID: 8100000000000000003
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: knight_4
-      rect: {serializedVersion: 2, x: 64, y: 64, width: 64, height: 64}
+      name: menu_button_new_run_normal
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 683
+        width: 768
+        height: 341
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -199,15 +218,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 10000000000000000000000000000005
-      internalID: 1000000000000000005
+      spriteID: 05000000000000000000000000000000
+      internalID: 8100000000000000004
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: knight_5
-      rect: {serializedVersion: 2, x: 128, y: 64, width: 64, height: 64}
+      name: menu_button_new_run_hover
+      rect:
+        serializedVersion: 2
+        x: 768
+        y: 683
+        width: 768
+        height: 341
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -216,42 +240,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 10000000000000000000000000000006
-      internalID: 1000000000000000006
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: knight_6
-      rect: {serializedVersion: 2, x: 0, y: 0, width: 64, height: 64}
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 10000000000000000000000000000007
-      internalID: 1000000000000000007
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: knight_7
-      rect: {serializedVersion: 2, x: 64, y: 0, width: 64, height: 64}
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 10000000000000000000000000000008
-      internalID: 1000000000000000008
+      spriteID: 06000000000000000000000000000000
+      internalID: 8100000000000000005
       vertices: []
       indices: 
       edges: []
@@ -270,14 +260,12 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      knight_0: 1000000000000000001
-      knight_1: 1000000000000000002
-      knight_2: 1000000000000000003
-      knight_3: 1000000000000000004
-      knight_4: 1000000000000000005
-      knight_5: 1000000000000000006
-      knight_6: 1000000000000000007
-      knight_7: 1000000000000000008
+      menu_button_settings_normal: 8100000000000000000
+      menu_button_settings_hover: 8100000000000000001
+      menu_button_continue_normal: 8100000000000000002
+      menu_button_continue_hover: 8100000000000000003
+      menu_button_new_run_normal: 8100000000000000004
+      menu_button_new_run_hover: 8100000000000000005
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

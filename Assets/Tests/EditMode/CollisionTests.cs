@@ -1,4 +1,6 @@
 using NUnit.Framework;
+using CryptKnight.Dungeon;
+using CryptKnight.Gameplay;
 using UnityEngine;
 
 namespace CryptKnight.Tests.EditMode
@@ -49,6 +51,15 @@ namespace CryptKnight.Tests.EditMode
             ColliderDistance2D distance = player.Distance(wall);
 
             Assert.That(distance.isOverlapped, Is.True);
+        }
+
+        [Test]
+        public void DoorEntryRequiresInputTowardDoor()
+        {
+            Assert.That(RoomDoorTrigger.IsInputEnteringDoor(RoomDirection.North, Vector2.up), Is.True);
+            Assert.That(RoomDoorTrigger.IsInputEnteringDoor(RoomDirection.North, Vector2.right), Is.False);
+            Assert.That(RoomDoorTrigger.IsInputEnteringDoor(RoomDirection.East, Vector2.right), Is.True);
+            Assert.That(RoomDoorTrigger.IsInputEnteringDoor(RoomDirection.East, Vector2.up), Is.False);
         }
 
         private Collider2D CreateCircleCollider(string objectName, Vector2 position, float radius)

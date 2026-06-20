@@ -1,4 +1,5 @@
 using CryptKnight.Application;
+using CryptKnight.Audio;
 using CryptKnight.Combat;
 using UnityEngine;
 #if ENABLE_INPUT_SYSTEM
@@ -14,9 +15,20 @@ namespace CryptKnight.Player
         private const float ProjectileLifetimeSeconds = 5f;
 
         private readonly AttackCooldown cooldown = new AttackCooldown();
+        private PlayerIdleAnimator spriteAnimator;
+
+        private void Awake()
+        {
+            spriteAnimator = GetComponentInChildren<PlayerIdleAnimator>();
+        }
 
         private void Update()
         {
+            if (GameManager.Instance.IsGameplayPaused)
+            {
+                return;
+            }
+
             float cooldownSeconds = GetAttackCooldownSeconds();
             if (!IsAttackHeld() || !cooldown.CanAttack(Time.time))
             {
@@ -36,6 +48,8 @@ namespace CryptKnight.Player
         private void Fire(Vector2 direction)
         {
             Vector2 spawnPosition = (Vector2)transform.position + direction * 0.75f;
+            spriteAnimator?.PlayAttack(direction);
+            GameSfxPlayer.PlaySwordAttack();
 
             ProjectileFactory.CreateCircleProjectile(
                 "Player Projectile",
@@ -68,7 +82,7 @@ namespace CryptKnight.Player
                 return Vector2.right;
             }
 
-            // Mouse input aim though active camera into 2D world space
+            // Aim through the active camera so mouse position lines up with the room.
             Vector2 pointerPosition = GetPointerScreenPosition();
             Vector3 worldPosition = camera.ScreenToWorldPoint(new Vector3(pointerPosition.x, pointerPosition.y, -camera.transform.position.z));
             return (Vector2)(worldPosition - transform.position);

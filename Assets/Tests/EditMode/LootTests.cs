@@ -225,6 +225,26 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
+        public void DefaultStatItemsUseConfiguredArtwork()
+        {
+            string[] itemIds =
+            {
+                "heart_container",
+                "damage_up",
+                "speed_up",
+                "attack_rate_up"
+            };
+
+            foreach (string itemId in itemIds)
+            {
+                Sprite sprite = LootItemVisuals.GetItemSprite(itemId);
+                Assert.That(sprite, Is.Not.Null, itemId);
+                Assert.That(sprite.rect.width, Is.GreaterThan(64f), itemId);
+                Assert.That(sprite.rect.height, Is.GreaterThan(64f), itemId);
+            }
+        }
+
+        [Test]
         public void EffectTextShowsStatBonuses()
         {
             LootItemDefinition item = new LootItemDefinition(
@@ -258,7 +278,7 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void PickupVisualIsHalfSizedWithoutShrinkingInteractionRange()
+        public void PickupVisualIsScaledDownWithoutShrinkingInteractionRange()
         {
             LootItemDefinition item = new LootItemDefinition(
                 "test_relic",
@@ -270,9 +290,35 @@ namespace CryptKnight.Tests.EditMode
             LootPickup pickup = CreatePickup(item);
             CircleCollider2D pickupCollider = pickup.GetComponent<CircleCollider2D>();
 
-            Assert.That(pickup.transform.localScale.x, Is.EqualTo(0.5f).Within(0.001f));
-            Assert.That(pickup.transform.localScale.y, Is.EqualTo(0.5f).Within(0.001f));
+            Assert.That(pickup.transform.localScale.x, Is.EqualTo(0.28f).Within(0.001f));
+            Assert.That(pickup.transform.localScale.y, Is.EqualTo(0.28f).Within(0.001f));
             Assert.That(pickupCollider.radius * pickup.transform.localScale.x, Is.EqualTo(1.05f).Within(0.001f));
+        }
+
+        [Test]
+        public void KeyPickupVisualIsLargerWithoutShrinkingInteractionRange()
+        {
+            LootItemDefinition normalItem = new LootItemDefinition(
+                "test_relic",
+                "Test Relic",
+                string.Empty,
+                new PlayerStatModifier(),
+                new[] { LootSourceType.Chest });
+            LootItemDefinition keyItem = new LootItemDefinition(
+                "key",
+                "Key",
+                string.Empty,
+                new PlayerStatModifier(),
+                new[] { LootSourceType.Chest },
+                keyAmount: 1);
+
+            LootPickup normalPickup = CreatePickup(normalItem);
+            LootPickup keyPickup = CreatePickup(keyItem);
+            CircleCollider2D keyCollider = keyPickup.GetComponent<CircleCollider2D>();
+
+            Assert.That(keyPickup.transform.localScale.x, Is.GreaterThan(normalPickup.transform.localScale.x));
+            Assert.That(keyPickup.transform.localScale.y, Is.GreaterThan(normalPickup.transform.localScale.y));
+            Assert.That(keyCollider.radius * keyPickup.transform.localScale.x, Is.EqualTo(1.05f).Within(0.001f));
         }
 
         [Test]

@@ -1,4 +1,5 @@
 using CryptKnight.Player;
+using CryptKnight.Gameplay;
 using NUnit.Framework;
 using System.Reflection;
 using UnityEngine;
@@ -55,6 +56,40 @@ namespace CryptKnight.Tests.EditMode
             float expectedDistance = 5f * Time.fixedDeltaTime;
 
             Assert.That(distance, Is.EqualTo(expectedDistance).Within(0.001f));
+        }
+
+        [Test]
+        public void AnimationDirectionUsesStrongestAxis()
+        {
+            Assert.That(PlayerIdleAnimator.GetCardinalDirection(new Vector2(3f, 1f)), Is.EqualTo(CardinalDirection.Right));
+            Assert.That(PlayerIdleAnimator.GetCardinalDirection(new Vector2(-3f, 1f)), Is.EqualTo(CardinalDirection.Left));
+            Assert.That(PlayerIdleAnimator.GetCardinalDirection(new Vector2(1f, 3f)), Is.EqualTo(CardinalDirection.Up));
+            Assert.That(PlayerIdleAnimator.GetCardinalDirection(new Vector2(1f, -3f)), Is.EqualTo(CardinalDirection.Down));
+        }
+
+        [Test]
+        public void RuntimePlayerVisualIsSmallerAndNearHitboxCenter()
+        {
+            GameObject parent = new GameObject("Runtime Parent");
+            GameObject controllerObject = new GameObject("Gameplay Controller");
+            createdObjects.Add(parent);
+            createdObjects.Add(controllerObject);
+
+            GameplaySceneController controller = controllerObject.AddComponent<GameplaySceneController>();
+            MethodInfo createPlayerMethod = typeof(GameplaySceneController).GetMethod("CreatePlayer", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(createPlayerMethod, Is.Not.Null);
+
+            Transform player = (Transform)createPlayerMethod.Invoke(controller, new object[] { parent.transform });
+            Transform visual = player.Find("Player Visual");
+            CircleCollider2D hitbox = player.GetComponent<CircleCollider2D>();
+
+            Assert.That(visual, Is.Not.Null);
+            Assert.That(hitbox, Is.Not.Null);
+            Assert.That(visual.localScale.x, Is.EqualTo(0.85f).Within(0.001f));
+            Assert.That(visual.localScale.y, Is.EqualTo(0.85f).Within(0.001f));
+            Assert.That(hitbox.radius, Is.EqualTo(0.35f).Within(0.001f));
+            Assert.That(visual.localPosition.x, Is.EqualTo(hitbox.offset.x).Within(0.001f));
+            Assert.That(Mathf.Abs(visual.localPosition.y - hitbox.offset.y), Is.LessThanOrEqualTo(hitbox.radius * 0.3f));
         }
 
         private GameObject CreatePlayer()

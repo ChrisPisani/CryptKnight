@@ -13,7 +13,7 @@ namespace CryptKnight.UI
     public sealed class RunHUDController : MonoBehaviour
     {
         private static readonly Color HudTextColor = new Color(0.96f, 0.93f, 0.84f, 1f);
-        private static readonly Color ItemPanelColor = new Color(0.06f, 0.06f, 0.075f, 0.72f);
+        private static readonly Color ItemPanelColor = new Color(0.035f, 0.036f, 0.045f, 0.88f);
         private static readonly Color QuantityBadgeColor = new Color(0.02f, 0.022f, 0.028f, 0.86f);
 
         private Font defaultFont;
@@ -72,7 +72,7 @@ namespace CryptKnight.UI
             heartsRoot = CreateAnchoredGroup(topLeft.transform, "Hearts", new Vector2(0f, 1f), Vector2.zero, new Vector2(360f, 56f), new Vector2(0f, 1f)).transform;
             CreateKeyDisplay(topLeft.transform);
 
-            GameObject bottomLeft = CreateAnchoredGroup(hudRoot.transform, "Collected Items HUD", new Vector2(0f, 0f), new Vector2(28f, 28f), new Vector2(520f, 86f), new Vector2(0f, 0f));
+            GameObject bottomLeft = CreateAnchoredGroup(hudRoot.transform, "Collected Items HUD", new Vector2(0f, 0f), new Vector2(28f, 28f), new Vector2(560f, 108f), new Vector2(0f, 0f));
             Image itemPanel = bottomLeft.AddComponent<Image>();
             itemPanel.color = ItemPanelColor;
             itemRoot = bottomLeft.transform;
@@ -144,7 +144,7 @@ namespace CryptKnight.UI
 
         private void RefreshItems(IReadOnlyList<CollectedItemStack> items)
         {
-            // Item UI is rebuilt only when something in the signature changes
+            // this avoids rebuilding this HUD every frame when item counts are unchanged.
             string itemSignature = CreateItemSignature(items);
             if (itemSignature == lastItemSignature)
             {
@@ -172,9 +172,9 @@ namespace CryptKnight.UI
 
         private void CreateItemStack(CollectedItemStack itemStack, int index)
         {
-            float x = 22f + index * 64f;
+            float x = 22f + index * 68f;
 
-            GameObject stackObject = CreateAnchoredGroup(itemRoot, $"Item {itemStack.ItemId}", new Vector2(0f, 0.5f), new Vector2(x, 0f), new Vector2(58f, 58f), new Vector2(0f, 0.5f));
+            GameObject stackObject = CreateAnchoredGroup(itemRoot, $"Item {itemStack.ItemId}", new Vector2(0f, 0.5f), new Vector2(x, 0f), new Vector2(62f, 62f), new Vector2(0f, 0.5f));
 
             GameObject iconObject = new GameObject("Icon");
             iconObject.transform.SetParent(stackObject.transform, false);
@@ -189,9 +189,9 @@ namespace CryptKnight.UI
             iconRect.anchorMax = new Vector2(0.5f, 0.5f);
             iconRect.pivot = new Vector2(0.5f, 0.5f);
             iconRect.anchoredPosition = Vector2.zero;
-            iconRect.sizeDelta = new Vector2(48f, 48f);
+            iconRect.sizeDelta = new Vector2(52f, 52f);
 
-            CreateQuantityBadge(stackObject.transform, itemStack.Quantity, new Vector2(36f, -18f));
+            CreateQuantityBadge(stackObject.transform, itemStack.Quantity, new Vector2(40f, -20f));
         }
 
         private HeartView CreateHeartView(Transform parent, int index)
@@ -207,7 +207,6 @@ namespace CryptKnight.UI
 
         private void LoadHudSprites()
         {
-            // generated UI uses editor asset lookup until I make a prefab
             fullHeartSprite = LoadSpriteAtPath("Assets/Art/UI/heartDisplay.png", "heartDisplay_0");
             emptyHeartSprite = LoadSpriteAtPath("Assets/Art/UI/heartDisplay.png", "heartDisplay_1");
             halfHeartSprite = LoadSpriteAtPath("Assets/Art/UI/heartDisplay.png", "heartDisplay_2");

@@ -1,4 +1,5 @@
 using CryptKnight.Combat;
+using CryptKnight.Application;
 using UnityEngine;
 
 namespace CryptKnight.Enemies
@@ -8,7 +9,7 @@ namespace CryptKnight.Enemies
         private const float ShotIntervalSeconds = 1.5f;
         private const float FirstShotDelaySeconds = 0.5f;
         private const float ProjectileSpeed = 5f;
-        private const float ProjectileRadius = 0.12f;
+        private const float ProjectileRadius = 0.135f;
         private const float ProjectileLifetimeSeconds = 5f;
         // Damage is in half hearts, so 1 damage is half a heart, 2 damage is a full heart
         private const int ProjectileDamage = 1;
@@ -24,12 +25,16 @@ namespace CryptKnight.Enemies
 
         private void Update()
         {
+            if (GameManager.Instance.IsGameplayPaused)
+            {
+                return;
+            }
+
             if (player == null || Time.time < nextShotTime)
             {
                 return;
             }
 
-            // it only fires straight at the player current position.
             Vector2 direction = player.position - transform.position;
             if (direction.sqrMagnitude <= 0.001f)
             {

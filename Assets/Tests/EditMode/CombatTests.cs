@@ -59,7 +59,7 @@ namespace CryptKnight.Tests.EditMode
         [Test]
         public void ProjectileVisualScalesSeparately()
         {
-            ProjectileController projectile = ProjectileFactory.CreateCircleProjectile(
+            ProjectileController playerProjectile = ProjectileFactory.CreateCircleProjectile(
                 "Projectile",
                 Vector2.zero,
                 Vector2.right,
@@ -70,14 +70,27 @@ namespace CryptKnight.Tests.EditMode
                 2f,
                 Color.white,
                 null);
-            createdObjects.Add(projectile.gameObject);
+            ProjectileController enemyProjectile = ProjectileFactory.CreateCircleProjectile(
+                "Enemy Projectile",
+                Vector2.zero,
+                Vector2.right,
+                DamageableTarget.Player,
+                1,
+                8f,
+                0.135f,
+                2f,
+                Color.white,
+                null);
+            createdObjects.Add(playerProjectile.gameObject);
+            createdObjects.Add(enemyProjectile.gameObject);
 
-            CircleCollider2D collider = projectile.GetComponent<CircleCollider2D>();
-            Transform visual = projectile.transform.Find("Visual");
+            CircleCollider2D playerCollider = playerProjectile.GetComponent<CircleCollider2D>();
+            CircleCollider2D enemyCollider = enemyProjectile.GetComponent<CircleCollider2D>();
 
-            Assert.That(collider.radius, Is.EqualTo(0.135f));
-            Assert.That(visual, Is.Not.Null);
-            Assert.That(visual.localScale.x, Is.EqualTo(0.27f).Within(0.001f));
+            Assert.That(playerCollider.radius, Is.EqualTo(0.135f));
+            Assert.That(enemyCollider.radius, Is.EqualTo(0.135f));
+            Assert.That(GetRenderedProjectileDiameter(playerProjectile), Is.EqualTo(0.54f).Within(0.001f));
+            Assert.That(GetRenderedProjectileDiameter(enemyProjectile), Is.EqualTo(0.54f).Within(0.001f));
         }
 
         [Test]
@@ -99,6 +112,16 @@ namespace CryptKnight.Tests.EditMode
             MethodInfo awakeMethod = typeof(EnemyHealth).GetMethod("Awake", BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.That(awakeMethod, Is.Not.Null);
             awakeMethod.Invoke(enemyHealth, null);
+        }
+
+        private static float GetRenderedProjectileDiameter(ProjectileController projectile)
+        {
+            Transform visual = projectile.transform.Find("Visual");
+            Assert.That(visual, Is.Not.Null);
+
+            SpriteRenderer renderer = visual.GetComponent<SpriteRenderer>();
+            Vector3 renderedSize = Vector3.Scale(renderer.sprite.bounds.size, visual.localScale);
+            return Mathf.Max(renderedSize.x, renderedSize.y);
         }
     }
 }
