@@ -92,5 +92,51 @@ namespace CryptKnight.Tests.EditMode
 
             Assert.That(distance, Is.GreaterThanOrEqualTo(3));
         }
+
+        [Test]
+        public void InvalidDungeonSizeThrows()
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() => DungeonLayoutGenerator.Generate(0, 4, 12345));
+            Assert.Throws<ArgumentOutOfRangeException>(() => DungeonLayoutGenerator.Generate(4, 0, 12345));
+        }
+
+        [Test]
+        public void EmptyLayoutIsNotConnected()
+        {
+            DungeonLayout layout = new DungeonLayout(0, 0, Array.Empty<DungeonRoom>(), Vector2Int.zero, Vector2Int.zero);
+
+            Assert.That(layout.AreAllRoomsConnected(), Is.False);
+            Assert.That(layout.TryGetRoom(Vector2Int.zero, out _), Is.False);
+        }
+
+        [Test]
+        public void RoomConnectionsCanBeChanged()
+        {
+            DungeonRoom room = new DungeonRoom(Vector2Int.zero, RoomType.Enemy);
+            Vector2Int firstTarget = new Vector2Int(1, 0);
+            Vector2Int secondTarget = new Vector2Int(2, 0);
+
+            room.Connect(RoomDirection.East, firstTarget);
+            room.Connect(RoomDirection.East, secondTarget);
+
+            Assert.That(room.TryGetConnection(RoomDirection.East, out Vector2Int connectedPosition), Is.True);
+            Assert.That(connectedPosition, Is.EqualTo(secondTarget));
+            Assert.That(room.IsConnectedTo(firstTarget), Is.False);
+            Assert.That(room.IsConnectedTo(secondTarget), Is.True);
+        }
+
+        [Test]
+        public void NavigatorBlocksBrokenConnections()
+        {
+            DungeonRoom startRoom = new DungeonRoom(Vector2Int.zero, RoomType.Starter);
+            startRoom.Connect(RoomDirection.East, new Vector2Int(1, 0));
+            DungeonLayout layout = new DungeonLayout(1, 1, new[] { startRoom }, Vector2Int.zero, Vector2Int.zero);
+            DungeonRoomNavigator navigator = new DungeonRoomNavigator(layout);
+
+            bool moved = navigator.TryMove(RoomDirection.East);
+
+            Assert.That(moved, Is.False);
+            Assert.That(navigator.CurrentRoom, Is.EqualTo(startRoom));
+        }
     }
 }

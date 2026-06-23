@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Reflection;
 using CryptKnight.Data;
@@ -9,7 +10,7 @@ namespace CryptKnight.Tests.EditMode
 {
     public sealed class LootTests
     {
-        private readonly System.Collections.Generic.List<Object> createdObjects = new System.Collections.Generic.List<Object>();
+        private readonly System.Collections.Generic.List<UnityEngine.Object> createdObjects = new System.Collections.Generic.List<UnityEngine.Object>();
 
         [TearDown]
         public void TearDown()
@@ -18,7 +19,7 @@ namespace CryptKnight.Tests.EditMode
             {
                 if (createdObjects[i] != null)
                 {
-                    Object.DestroyImmediate(createdObjects[i]);
+                    UnityEngine.Object.DestroyImmediate(createdObjects[i]);
                 }
             }
 
@@ -95,6 +96,35 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
+        public void ItemRollWrapsAround()
+        {
+            LootSystem lootSystem = new LootSystem(LootTableConfiguration.CreateDefault());
+
+            LootDropResult negativeRoll = lootSystem.RollDrop(LootSourceType.Chest, 0f, -1);
+            LootDropResult largeRoll = lootSystem.RollDrop(LootSourceType.Chest, 0f, 99);
+
+            Assert.That(negativeRoll.HasDrop, Is.True);
+            Assert.That(largeRoll.HasDrop, Is.True);
+        }
+
+        [Test]
+        public void RandomRollNeedsRandom()
+        {
+            LootSystem lootSystem = new LootSystem(LootTableConfiguration.CreateDefault());
+
+            Assert.Throws<ArgumentNullException>(() => lootSystem.RollDrop(LootSourceType.Enemy, null));
+        }
+
+        [Test]
+        public void NoDropHasNoItem()
+        {
+            LootDropResult result = LootDropResult.NoDrop();
+
+            Assert.That(result.HasDrop, Is.False);
+            Assert.That(result.Item, Is.Null);
+        }
+
+        [Test]
         public void JsonConfigLoads()
         {
             string json = @"{
@@ -131,6 +161,69 @@ namespace CryptKnight.Tests.EditMode
             Assert.That(item.StatModifier.DamageBonus, Is.EqualTo(2));
             Assert.That(item.StatModifier.MovementSpeedBonus, Is.EqualTo(0.5f));
             Assert.That(item.StatModifier.AttackRateBonus, Is.EqualTo(0.1f));
+        }
+
+        [Test]
+        public void EmptyJsonCreatesEmptyTable()
+        {
+            LootTableConfiguration configuration = LootTableConfiguration.FromJson(string.Empty);
+
+            Assert.That(configuration.Items, Is.Empty);
+            Assert.That(configuration.GetDropRate(LootSourceType.Enemy), Is.EqualTo(0f));
+        }
+
+        [Test]
+        public void InvalidConfigValuesAreIgnored()
+        {
+            string json = @"{
+  ""sourceDropRates"": [
+    { ""source"": ""Enemy"", ""dropRate"": 2.5 },
+    { ""source"": ""Chest"", ""dropRate"": -1 },
+    { ""source"": ""Missing"", ""dropRate"": 1 }
+  ],
+  ""items"": [
+    { ""itemId"": """", ""displayName"": ""Bad Item"", ""allowedSources"": [""Enemy""] },
+    { ""itemId"": ""valid_item"", ""displayName"": """", ""keyAmount"": -3, ""allowedSources"": [""Shop"", ""Unknown""] }
+  ]
+}";
+
+            LootTableConfiguration configuration = LootTableConfiguration.FromJson(json);
+            LootItemDefinition item = configuration.Items.Single();
+
+            Assert.That(configuration.GetDropRate(LootSourceType.Enemy), Is.EqualTo(1f));
+            Assert.That(configuration.GetDropRate(LootSourceType.Chest), Is.EqualTo(0f));
+            Assert.That(item.DisplayName, Is.EqualTo("valid_item"));
+            Assert.That(item.Description, Is.EqualTo(string.Empty));
+            Assert.That(item.KeyAmount, Is.EqualTo(0));
+            Assert.That(item.CanAppearFrom(LootSourceType.Shop), Is.True);
+            Assert.That(item.CanAppearFrom(LootSourceType.Enemy), Is.False);
+        }
+
+        [Test]
+        public void ItemDefinitionNormalizesFields()
+        {
+            LootItemDefinition item = new LootItemDefinition(
+                "test_item",
+                string.Empty,
+                null,
+                null,
+                null,
+                null,
+                keyAmount: -2);
+
+            Assert.That(item.ItemId, Is.EqualTo("test_item"));
+            Assert.That(item.DisplayName, Is.EqualTo("test_item"));
+            Assert.That(item.Description, Is.EqualTo(string.Empty));
+            Assert.That(item.IconAssetPath, Is.EqualTo(string.Empty));
+            Assert.That(item.KeyAmount, Is.EqualTo(0));
+            Assert.That(item.StatModifier, Is.Not.Null);
+            Assert.That(item.AllowedSources, Is.Empty);
+        }
+
+        [Test]
+        public void ItemDefinitionNeedsId()
+        {
+            Assert.Throws<ArgumentException>(() => new LootItemDefinition(string.Empty, "Bad", string.Empty, new PlayerStatModifier(), Array.Empty<LootSourceType>()));
         }
 
         [Test]
@@ -194,6 +287,17 @@ namespace CryptKnight.Tests.EditMode
             Assert.That(applied, Is.False);
             Assert.That(runState.PlayerStats.Damage, Is.EqualTo(1));
             Assert.That(runState.KeyCount, Is.EqualTo(0));
+            Assert.That(runState.CollectedItems, Is.Empty);
+        }
+
+        [Test]
+        public void CollectorRejectsMissingInput()
+        {
+            GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, new PlayerBaseStats(6, 1, 5f, 1f));
+            LootItemDefinition item = new LootItemDefinition("test_item", "Test", string.Empty, new PlayerStatModifier(), new[] { LootSourceType.Chest });
+
+            Assert.That(LootItemCollector.ApplyToRun(null, item), Is.False);
+            Assert.That(LootItemCollector.ApplyToRun(runState, null), Is.False);
             Assert.That(runState.CollectedItems, Is.Empty);
         }
 
@@ -275,6 +379,45 @@ namespace CryptKnight.Tests.EditMode
             string effectText = LootItemEffectFormatter.FormatEffects(item, 3);
 
             Assert.That(effectText, Is.EqualTo("+3 movement speed"));
+        }
+
+        [Test]
+        public void EffectTextHandlesEmptyItems()
+        {
+            LootItemDefinition item = new LootItemDefinition(
+                "plain_rock",
+                "Plain Rock",
+                string.Empty,
+                new PlayerStatModifier(),
+                new[] { LootSourceType.Chest });
+
+            Assert.That(LootItemEffectFormatter.FormatEffects(null), Is.EqualTo("No effect"));
+            Assert.That(LootItemEffectFormatter.FormatEffects(item), Is.EqualTo("No effect"));
+        }
+
+        [Test]
+        public void EffectTextShowsNegativeBonuses()
+        {
+            LootItemDefinition item = new LootItemDefinition(
+                "cursed_relic",
+                "Cursed Relic",
+                string.Empty,
+                new PlayerStatModifier(maxHealthBonus: -2, damageBonus: -1, movementSpeedBonus: -0.5f, attackRateBonus: -0.1f),
+                new[] { LootSourceType.Chest });
+
+            string effectText = LootItemEffectFormatter.FormatEffects(item);
+
+            Assert.That(effectText, Does.Contain("-1 max heart"));
+            Assert.That(effectText, Does.Contain("-1 damage"));
+            Assert.That(effectText, Does.Contain("-0.5 movement speed"));
+            Assert.That(effectText, Does.Contain("-0.1 attack speed"));
+        }
+
+        [Test]
+        public void GeneratedSpritesAreCached()
+        {
+            Assert.That(LootItemVisuals.GetSquareSprite(), Is.SameAs(LootItemVisuals.GetSquareSprite()));
+            Assert.That(LootItemVisuals.GetCircleSprite("unknown_item"), Is.SameAs(LootItemVisuals.GetCircleSprite("unknown_item")));
         }
 
         [Test]

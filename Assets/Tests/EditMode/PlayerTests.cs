@@ -1,5 +1,6 @@
 using CryptKnight.Player;
 using CryptKnight.Gameplay;
+using CryptKnight.Combat;
 using NUnit.Framework;
 using System.Reflection;
 using UnityEngine;
@@ -22,6 +23,12 @@ namespace CryptKnight.Tests.EditMode
             }
 
             createdObjects.Clear();
+
+            GameObject gameManager = GameObject.Find("Game Manager");
+            if (gameManager != null)
+            {
+                Object.DestroyImmediate(gameManager);
+            }
         }
 
         [Test]
@@ -59,12 +66,59 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
+        public void SmallMovementInputIsUnchanged()
+        {
+            Vector2 input = new Vector2(0.25f, -0.5f);
+
+            Assert.That(PlayerMovement.NormalizeInput(input), Is.EqualTo(input));
+        }
+
+        [Test]
         public void AnimationDirectionUsesStrongestAxis()
         {
             Assert.That(PlayerIdleAnimator.GetCardinalDirection(new Vector2(3f, 1f)), Is.EqualTo(CardinalDirection.Right));
             Assert.That(PlayerIdleAnimator.GetCardinalDirection(new Vector2(-3f, 1f)), Is.EqualTo(CardinalDirection.Left));
             Assert.That(PlayerIdleAnimator.GetCardinalDirection(new Vector2(1f, 3f)), Is.EqualTo(CardinalDirection.Up));
             Assert.That(PlayerIdleAnimator.GetCardinalDirection(new Vector2(1f, -3f)), Is.EqualTo(CardinalDirection.Down));
+        }
+
+        [Test]
+        public void AnimatorStoresMovementDirection()
+        {
+            GameObject playerVisual = new GameObject("Player Visual");
+            createdObjects.Add(playerVisual);
+
+            playerVisual.AddComponent<SpriteRenderer>();
+            PlayerIdleAnimator animator = playerVisual.AddComponent<PlayerIdleAnimator>();
+            InvokeAwake(animator);
+
+            animator.SetMovement(Vector2.left);
+
+            FieldInfo facingField = typeof(PlayerIdleAnimator).GetField("facingDirection", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(facingField, Is.Not.Null);
+            Assert.That(facingField.GetValue(animator), Is.EqualTo(CardinalDirection.Left));
+        }
+
+        [Test]
+        public void AttackDefaultsWorkWithoutRun()
+        {
+            GameObject player = new GameObject("Player");
+            createdObjects.Add(player);
+            PlayerAttackController attackController = player.AddComponent<PlayerAttackController>();
+
+            Assert.That(InvokePrivate<int>(attackController, "GetDamage"), Is.EqualTo(1));
+            Assert.That(InvokePrivate<float>(attackController, "GetAttackCooldownSeconds"), Is.EqualTo(1f));
+        }
+
+        [Test]
+        public void DamageReceiverTargetsPlayer()
+        {
+            GameObject player = new GameObject("Player");
+            createdObjects.Add(player);
+
+            PlayerDamageReceiver receiver = player.AddComponent<PlayerDamageReceiver>();
+
+            Assert.That(receiver.TargetType, Is.EqualTo(DamageableTarget.Player));
         }
 
         [Test]
@@ -109,6 +163,20 @@ namespace CryptKnight.Tests.EditMode
             MethodInfo awakeMethod = typeof(PlayerController).GetMethod("Awake", BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.That(awakeMethod, Is.Not.Null);
             awakeMethod.Invoke(controller, null);
+        }
+
+        private static void InvokeAwake(PlayerIdleAnimator animator)
+        {
+            MethodInfo awakeMethod = typeof(PlayerIdleAnimator).GetMethod("Awake", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(awakeMethod, Is.Not.Null);
+            awakeMethod.Invoke(animator, null);
+        }
+
+        private static T InvokePrivate<T>(object target, string methodName)
+        {
+            MethodInfo method = target.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(method, Is.Not.Null);
+            return (T)method.Invoke(target, null);
         }
     }
 }

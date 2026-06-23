@@ -130,5 +130,80 @@ namespace CryptKnight.Tests.EditMode
             Assert.That(summary, Does.Contain("Movement Speed: 5.5"));
             Assert.That(summary, Does.Contain("Attack Speed: 1.2"));
         }
+
+        [Test]
+        public void DefaultStatsMatchStartingPlayer()
+        {
+            PlayerBaseStats stats = PlayerBaseStats.CreateDefault();
+
+            Assert.That(stats.MaxHealth, Is.EqualTo(6));
+            Assert.That(stats.Damage, Is.EqualTo(1));
+            Assert.That(stats.MovementSpeed, Is.EqualTo(5f));
+            Assert.That(stats.AttackRate, Is.EqualTo(1f));
+        }
+
+        [Test]
+        public void BadRunUpdatesAreIgnored()
+        {
+            GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, 6);
+
+            runState.ApplyDamage(0);
+            runState.Heal(-2);
+            runState.AddKeys(-5);
+            runState.AddCollectedItem(string.Empty, "Missing", 1);
+            runState.AddCollectedItem("damage_up", "Damage", 0);
+            runState.AddStatModifier(null);
+
+            Assert.That(runState.CurrentHealth, Is.EqualTo(6));
+            Assert.That(runState.KeyCount, Is.EqualTo(0));
+            Assert.That(runState.CollectedItems, Is.Empty);
+            Assert.That(runState.PlayerStats.Modifiers, Is.Empty);
+        }
+
+        [Test]
+        public void DisplayNameFallsBackToItemId()
+        {
+            GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, 6);
+
+            runState.AddCollectedItem("mystery_relic", string.Empty, 2);
+
+            Assert.That(runState.CollectedItems, Has.Count.EqualTo(1));
+            Assert.That(runState.CollectedItems[0].DisplayName, Is.EqualTo("mystery_relic"));
+            Assert.That(runState.CollectedItems[0].Quantity, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void RunCanOnlyQuitWhileActive()
+        {
+            GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, 6);
+
+            runState.QuitRun();
+            runState.ApplyDamage(99);
+            runState.Heal(2);
+
+            Assert.That(runState.Status, Is.EqualTo(GameRunStatus.Quit));
+            Assert.That(runState.CurrentHealth, Is.EqualTo(6));
+        }
+
+        [Test]
+        public void StatsHaveMinimumValues()
+        {
+            PlayerRuntimeStats stats = new PlayerRuntimeStats(new PlayerBaseStats(2, 1, 1f, 1f));
+
+            stats.AddModifier(new PlayerStatModifier(maxHealthBonus: -99, damageBonus: -99, movementSpeedBonus: -99f, attackRateBonus: -99f));
+
+            Assert.That(stats.MaxHealth, Is.EqualTo(1));
+            Assert.That(stats.Damage, Is.EqualTo(0));
+            Assert.That(stats.MovementSpeed, Is.EqualTo(0f));
+            Assert.That(stats.AttackRate, Is.EqualTo(0.01f));
+            Assert.That(stats.AttackCooldownSeconds, Is.EqualTo(100f).Within(0.001f));
+        }
+
+        [Test]
+        public void NullStatsDoNotCrashSummary()
+        {
+            Assert.That(PlayerStatSummaryFormatter.Format(null), Is.EqualTo("No active run"));
+            Assert.That(PlayerStatSummaryFormatter.FormatStatsOnly(null), Is.EqualTo("No active run"));
+        }
     }
 }

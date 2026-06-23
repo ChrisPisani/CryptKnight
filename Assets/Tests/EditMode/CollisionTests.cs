@@ -62,6 +62,16 @@ namespace CryptKnight.Tests.EditMode
             Assert.That(RoomDoorTrigger.IsInputEnteringDoor(RoomDirection.East, Vector2.up), Is.False);
         }
 
+        [Test]
+        public void DoorEntryHandlesDiagonalAndIdleInput()
+        {
+            Assert.That(RoomDoorTrigger.IsInputEnteringDoor(RoomDirection.North, Vector2.zero), Is.False);
+            Assert.That(RoomDoorTrigger.IsInputEnteringDoor(RoomDirection.North, new Vector2(0.4f, 1f)), Is.True);
+            Assert.That(RoomDoorTrigger.IsInputEnteringDoor(RoomDirection.South, Vector2.down), Is.True);
+            Assert.That(RoomDoorTrigger.IsInputEnteringDoor(RoomDirection.West, Vector2.left), Is.True);
+            Assert.That(RoomDoorTrigger.IsInputEnteringDoor(RoomDirection.West, Vector2.right), Is.False);
+        }
+
         private Collider2D CreateCircleCollider(string objectName, Vector2 position, float radius)
         {
             GameObject gameObject = new GameObject(objectName);
