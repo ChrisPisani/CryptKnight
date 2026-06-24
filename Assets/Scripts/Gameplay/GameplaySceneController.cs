@@ -20,6 +20,7 @@ namespace CryptKnight.Gameplay
         private const float RoomWidth = 13.5f;
         private const float RoomHeight = 7.5f;
         private const float WallThickness = 0.75f;
+        private const float RewardBoundaryPadding = 0.75f;
         private const float GameMusicFadeDuration = 5f;
         private const float GameMusicVolume = 1f;
         private const string ExplorationMusicResourcePath = "Audio/Game/crypt-knight-dungeon-exploration-loop";
@@ -511,6 +512,7 @@ namespace CryptKnight.Gameplay
                     break;
                 case RoomType.Starter:
                     CreateTestLootPickups(parent);
+                    CreateStarterChest(parent);
                     break;
             }
         }
@@ -547,7 +549,22 @@ namespace CryptKnight.Gameplay
             }
         }
 
-        private void CreateLootPickup(Transform parent, LootItemDefinition itemDefinition, Vector2 position)
+        private void CreateStarterChest(Transform parent)
+        {
+            GameObject chestObject = CreateSpriteObject("Locked Chest", parent, new Vector2(0f, -2.35f), Vector2.one, Color.white);
+            chestObject.AddComponent<CircleCollider2D>();
+            LockedChest chest = chestObject.AddComponent<LockedChest>();
+            chest.Initialize(
+                LootTableConfiguration.CreateDefault(),
+                (itemDefinition, rewardPosition) =>
+                {
+                    Vector2 clampedRewardPosition = ClampToPlayableRoom(rewardPosition);
+                    LootPickup pickup = CreateLootPickup(parent, itemDefinition, clampedRewardPosition);
+                    pickup.PlaySpawnLaunch(chest.transform.position, clampedRewardPosition, GetPlayableRoomBounds());
+                });
+        }
+
+        private LootPickup CreateLootPickup(Transform parent, LootItemDefinition itemDefinition, Vector2 position)
         {
             GameObject pickupObject = new GameObject($"Pickup {itemDefinition.DisplayName}");
             pickupObject.transform.SetParent(parent, false);
@@ -555,7 +572,24 @@ namespace CryptKnight.Gameplay
 
             pickupObject.AddComponent<SpriteRenderer>();
             pickupObject.AddComponent<CircleCollider2D>();
-            pickupObject.AddComponent<LootPickup>().Initialize(itemDefinition);
+            LootPickup pickup = pickupObject.AddComponent<LootPickup>();
+            pickup.Initialize(itemDefinition);
+            return pickup;
+        }
+
+        private static Vector2 ClampToPlayableRoom(Vector2 position)
+        {
+            Rect bounds = GetPlayableRoomBounds();
+            return new Vector2(
+                Mathf.Clamp(position.x, bounds.xMin, bounds.xMax),
+                Mathf.Clamp(position.y, bounds.yMin, bounds.yMax));
+        }
+
+        private static Rect GetPlayableRoomBounds()
+        {
+            float halfWidth = RoomWidth * 0.5f - RewardBoundaryPadding;
+            float halfHeight = RoomHeight * 0.5f - RewardBoundaryPadding;
+            return Rect.MinMaxRect(-halfWidth, -halfHeight, halfWidth, halfHeight);
         }
 
         private static GameObject CreateSpriteObject(string objectName, Transform parent, Vector2 position, Vector2 scale, Color color)

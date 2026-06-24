@@ -19,6 +19,8 @@ namespace CryptKnight.Loot
         private const float PromptWorldOffsetY = 1.1f;
         private const float BobAmplitude = 0.08f;
         private const float BobSpeed = 3.2f;
+        private const float SpawnLaunchSeconds = 0.32f;
+        private const float SpawnLaunchArcHeight = 0.45f;
         private const int PickupSortingOrder = 4;
 
         private LootItemDefinition itemDefinition;
@@ -32,6 +34,11 @@ namespace CryptKnight.Loot
         private int playersInRange;
         private bool wasCollected;
         private float visualScale = DefaultVisualScale;
+        private Vector3 launchStartPosition;
+        private Vector3 launchEndPosition;
+        private Rect? launchBounds;
+        private float launchElapsed;
+        private bool isLaunching;
 
         public LootItemDefinition ItemDefinition => itemDefinition;
         public bool IsPlayerInRange => playersInRange > 0;
@@ -48,6 +55,23 @@ namespace CryptKnight.Loot
             CaptureBobBasePosition();
         }
 
+        public void PlaySpawnLaunch(Vector3 startPosition, Vector3 endPosition)
+        {
+            PlaySpawnLaunch(startPosition, endPosition, null);
+        }
+
+        public void PlaySpawnLaunch(Vector3 startPosition, Vector3 endPosition, Rect? bounds)
+        {
+            launchStartPosition = startPosition;
+            launchEndPosition = endPosition;
+            launchBounds = bounds;
+            launchElapsed = 0f;
+            isLaunching = true;
+            transform.position = startPosition;
+            bobBasePosition = endPosition;
+            hasBobBasePosition = true;
+        }
+
         private void Awake()
         {
             EnsureComponents();
@@ -57,6 +81,11 @@ namespace CryptKnight.Loot
 
         private void Update()
         {
+            if (ApplySpawnLaunch())
+            {
+                return;
+            }
+
             ApplyBobbing();
 
             if (GameManager.Instance.IsGameplayPaused)
@@ -185,6 +214,45 @@ namespace CryptKnight.Loot
             bobBasePosition = transform.position;
             bobPhase = Mathf.Abs(transform.position.x * 0.73f + transform.position.y * 0.41f);
             hasBobBasePosition = true;
+        }
+
+        private bool ApplySpawnLaunch()
+        {
+            if (!isLaunching)
+            {
+                return false;
+            }
+
+            launchElapsed += Time.deltaTime;
+            float progress = Mathf.Clamp01(launchElapsed / SpawnLaunchSeconds);
+            Vector3 position = Vector3.Lerp(launchStartPosition, launchEndPosition, progress);
+            // Add a quick arc so chest rewards read like they popped out instead of teleporting into place.
+            position.y += Mathf.Sin(progress * Mathf.PI) * SpawnLaunchArcHeight;
+            position = ClampToLaunchBounds(position);
+            transform.position = position;
+
+            if (progress >= 1f)
+            {
+                isLaunching = false;
+                launchBounds = null;
+                CaptureBobBasePosition();
+            }
+
+            return true;
+        }
+
+        private Vector3 ClampToLaunchBounds(Vector3 position)
+        {
+            if (!launchBounds.HasValue)
+            {
+                return position;
+            }
+
+            Rect bounds = launchBounds.Value;
+            return new Vector3(
+                Mathf.Clamp(position.x, bounds.xMin, bounds.xMax),
+                Mathf.Clamp(position.y, bounds.yMin, bounds.yMax),
+                position.z);
         }
 
         private void ApplyBobbing()

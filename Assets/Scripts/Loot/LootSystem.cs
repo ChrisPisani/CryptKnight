@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace CryptKnight.Loot
 {
@@ -19,23 +20,33 @@ namespace CryptKnight.Loot
 
         public LootDropResult RollDrop(LootSourceType sourceType, Random random)
         {
+            return RollDrop(sourceType, random, null);
+        }
+
+        public LootDropResult RollDrop(LootSourceType sourceType, Random random, Predicate<LootItemDefinition> itemFilter)
+        {
             if (random == null)
             {
                 throw new ArgumentNullException(nameof(random));
             }
 
-            IReadOnlyList<LootItemDefinition> possibleItems = configuration.GetItemsForSource(sourceType);
+            IReadOnlyList<LootItemDefinition> possibleItems = GetFilteredItems(sourceType, itemFilter);
             if (possibleItems.Count == 0)
             {
                 return LootDropResult.NoDrop();
             }
 
-            return RollDrop(sourceType, (float)random.NextDouble(), random.Next(possibleItems.Count));
+            return RollDrop(sourceType, (float)random.NextDouble(), random.Next(possibleItems.Count), itemFilter);
         }
 
         public LootDropResult RollDrop(LootSourceType sourceType, float chanceRoll, int itemRoll)
         {
-            IReadOnlyList<LootItemDefinition> possibleItems = configuration.GetItemsForSource(sourceType);
+            return RollDrop(sourceType, chanceRoll, itemRoll, null);
+        }
+
+        public LootDropResult RollDrop(LootSourceType sourceType, float chanceRoll, int itemRoll, Predicate<LootItemDefinition> itemFilter)
+        {
+            IReadOnlyList<LootItemDefinition> possibleItems = GetFilteredItems(sourceType, itemFilter);
             if (possibleItems.Count == 0 || chanceRoll >= configuration.GetDropRate(sourceType))
             {
                 return LootDropResult.NoDrop();
@@ -44,6 +55,12 @@ namespace CryptKnight.Loot
             // Keep item selection stable even if invalid table values are passed around.
             int itemIndex = ((itemRoll % possibleItems.Count) + possibleItems.Count) % possibleItems.Count;
             return new LootDropResult(possibleItems[itemIndex]);
+        }
+
+        private IReadOnlyList<LootItemDefinition> GetFilteredItems(LootSourceType sourceType, Predicate<LootItemDefinition> itemFilter)
+        {
+            IReadOnlyList<LootItemDefinition> possibleItems = configuration.GetItemsForSource(sourceType);
+            return itemFilter == null ? possibleItems : possibleItems.Where(item => itemFilter(item)).ToArray();
         }
     }
 }

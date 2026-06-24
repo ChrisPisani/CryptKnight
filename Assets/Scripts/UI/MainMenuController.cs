@@ -17,7 +17,7 @@ namespace CryptKnight.UI
 {
     public sealed class MainMenuController : MonoBehaviour
     {
-        private const string DemoVersion = "v0.8.1";
+        private const string DemoVersion = "v0.9.0";
         private const string MainMenuBackgroundPath = "Assets/Art/UI/main_menu_background.png";
         private const string MainMenuBackgroundResourcePath = "UI/main_menu_background";
         private const string MainMenuButtonSheetPath = "Assets/Art/UI/crypt-knight-buttons-transparent-full-sheet.png";

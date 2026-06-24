@@ -108,6 +108,17 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
+        public void FilteredDropsSkipItems()
+        {
+            LootSystem lootSystem = new LootSystem(LootTableConfiguration.CreateDefault());
+
+            LootDropResult result = lootSystem.RollDrop(LootSourceType.Chest, 0f, 99, item => item.ItemId != "key");
+
+            Assert.That(result.HasDrop, Is.True);
+            Assert.That(result.Item.ItemId, Is.Not.EqualTo("key"));
+        }
+
+        [Test]
         public void RandomRollNeedsRandom()
         {
             LootSystem lootSystem = new LootSystem(LootTableConfiguration.CreateDefault());
