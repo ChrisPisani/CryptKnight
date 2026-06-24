@@ -34,6 +34,7 @@ namespace CryptKnight.Loot
 
         private LootSystem lootSystem;
         private Action<LootItemDefinition, Vector2> spawnReward;
+        private Action opened;
         private System.Random random;
         private SpriteRenderer spriteRenderer;
         private CircleCollider2D interactionCollider;
@@ -51,10 +52,11 @@ namespace CryptKnight.Loot
         public bool IsPromptVisible => promptRoot != null && promptRoot.activeSelf;
         public string PromptMessage => promptText != null ? promptText.text : string.Empty;
 
-        public void Initialize(LootTableConfiguration configuration, Action<LootItemDefinition, Vector2> rewardSpawner, int? randomSeed = null)
+        public void Initialize(LootTableConfiguration configuration, Action<LootItemDefinition, Vector2> rewardSpawner, int? randomSeed = null, Action onOpened = null)
         {
             lootSystem = new LootSystem(configuration ?? LootTableConfiguration.CreateDefault());
             spawnReward = rewardSpawner;
+            opened = onOpened;
             random = randomSeed.HasValue ? new System.Random(randomSeed.Value) : new System.Random();
             EnsureComponents();
             ConfigureVisual(false);
@@ -139,9 +141,11 @@ namespace CryptKnight.Loot
             ConfigureVisual(true);
             SetPromptVisible(false);
             GameSfxPlayer.PlayChestOpen();
+            // So the chest cannot reappear after travel
+            opened?.Invoke();
 
             EnsureLootSystem();
-            // Chests use the normal chest loot pool, but keys are filtered out so a chest cannot refund its own cost.
+            // Chests use the normal chest loot pool, but cannot drop keys
             LootDropResult result = lootSystem.RollDrop(LootSourceType.Chest, random, item => item.ItemId != KeyItemId);
             if (result.HasDrop)
             {

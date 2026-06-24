@@ -1,6 +1,8 @@
 using CryptKnight.Application;
 using CryptKnight.Audio;
 using CryptKnight.Player;
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -22,6 +24,10 @@ namespace CryptKnight.Loot
         private const float SpawnLaunchSeconds = 0.32f;
         private const float SpawnLaunchArcHeight = 0.45f;
         private const int PickupSortingOrder = 4;
+        // All active pickups are checked for interact press so multiple in range items pick up closest.
+        private static readonly List<LootPickup> ActivePickups = new List<LootPickup>();
+        private static int claimedPickupFrame = -1;
+        private static Transform claimedPickupPlayer;
 
         private LootItemDefinition itemDefinition;
         private SpriteRenderer spriteRenderer;
@@ -32,8 +38,10 @@ namespace CryptKnight.Loot
         private float bobPhase;
         private bool hasBobBasePosition;
         private int playersInRange;
+        private Transform playerInRange;
         private bool wasCollected;
         private float visualScale = DefaultVisualScale;
+        private Action<LootPickup> collected;
         private Vector3 launchStartPosition;
         private Vector3 launchEndPosition;
         private Rect? launchBounds;
@@ -44,9 +52,10 @@ namespace CryptKnight.Loot
         public bool IsPlayerInRange => playersInRange > 0;
         public bool IsPromptVisible => promptRoot != null && promptRoot.activeSelf;
 
-        public void Initialize(LootItemDefinition definition)
+        public void Initialize(LootItemDefinition definition, Action<LootPickup> onCollected = null)
         {
             itemDefinition = definition;
+            collected = onCollected;
             EnsureComponents();
             ConfigureVisual();
             ConfigurePrompt();
@@ -79,6 +88,19 @@ namespace CryptKnight.Loot
             SetPromptVisible(false);
         }
 
+        private void OnEnable()
+        {
+            if (!ActivePickups.Contains(this))
+            {
+                ActivePickups.Add(this);
+            }
+        }
+
+        private void OnDisable()
+        {
+            ActivePickups.Remove(this);
+        }
+
         private void Update()
         {
             if (ApplySpawnLaunch())
@@ -95,30 +117,56 @@ namespace CryptKnight.Loot
 
             if (IsPlayerInRange && IsInteractPressed())
             {
-                TryPickUp();
+                TryPickUpForPlayer(playerInRange);
             }
         }
 
         private void OnTriggerEnter2D(Collider2D other)
         {
-            if (other.GetComponentInParent<PlayerController>() == null)
+            PlayerController playerController = other.GetComponentInParent<PlayerController>();
+            if (playerController == null)
             {
                 return;
             }
 
+            playerInRange = playerController.transform;
             playersInRange++;
             SetPromptVisible(true);
         }
 
         private void OnTriggerExit2D(Collider2D other)
         {
-            if (other.GetComponentInParent<PlayerController>() == null)
+            PlayerController playerController = other.GetComponentInParent<PlayerController>();
+            if (playerController == null)
             {
                 return;
             }
 
             playersInRange = Mathf.Max(0, playersInRange - 1);
+            if (playersInRange == 0 || playerInRange == playerController.transform)
+            {
+                playerInRange = null;
+            }
+
             SetPromptVisible(IsPlayerInRange);
+        }
+
+        public bool TryPickUpForPlayer(Transform playerTransform)
+        {
+            // only the closest pickup can consume this frame.
+            if (playerTransform == null || !CanClaimPickupThisFrame(playerTransform) || !IsClosestPickupTo(playerTransform))
+            {
+                return false;
+            }
+
+            if (!TryPickUp())
+            {
+                return false;
+            }
+
+            claimedPickupFrame = Time.frameCount;
+            claimedPickupPlayer = playerTransform;
+            return true;
         }
 
         public bool TryPickUp()
@@ -135,7 +183,51 @@ namespace CryptKnight.Loot
             }
 
             GameSfxPlayer.PlayItemPowerupPickup();
+            collected?.Invoke(this);
             Destroy(gameObject);
+            return true;
+        }
+
+        private static bool CanClaimPickupThisFrame(Transform playerTransform)
+        {
+            return claimedPickupFrame != Time.frameCount || claimedPickupPlayer != playerTransform;
+        }
+
+        private bool IsClosestPickupTo(Transform playerTransform)
+        {
+            if (!IsPlayerInRange || playerInRange != playerTransform)
+            {
+                return false;
+            }
+
+            int myIndex = ActivePickups.IndexOf(this);
+            float myDistance = ((Vector2)transform.position - (Vector2)playerTransform.position).sqrMagnitude;
+            for (int i = 0; i < ActivePickups.Count; i++)
+            {
+                LootPickup pickup = ActivePickups[i];
+                if (pickup == null || pickup == this || pickup.wasCollected || pickup.itemDefinition == null)
+                {
+                    continue;
+                }
+
+                if (!pickup.IsPlayerInRange || pickup.playerInRange != playerTransform)
+                {
+                    continue;
+                }
+
+                float otherDistance = ((Vector2)pickup.transform.position - (Vector2)playerTransform.position).sqrMagnitude;
+                if (otherDistance < myDistance - 0.0001f)
+                {
+                    return false;
+                }
+
+                // equal distance items use a tie breaker based on index order
+                if (Mathf.Abs(otherDistance - myDistance) <= 0.0001f && i < myIndex)
+                {
+                    return false;
+                }
+            }
+
             return true;
         }
 

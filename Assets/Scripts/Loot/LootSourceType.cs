@@ -4,6 +4,7 @@ namespace CryptKnight.Loot
     {
         Enemy,
         Chest,
+        RoomClear,
         Shop
     }
 }

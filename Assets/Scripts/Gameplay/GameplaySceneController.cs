@@ -21,6 +21,8 @@ namespace CryptKnight.Gameplay
         private const float RoomHeight = 7.5f;
         private const float WallThickness = 0.75f;
         private const float RewardBoundaryPadding = 0.75f;
+        private const int EnemyCountPerEnemyRoom = 1;
+        private const string KeyItemId = "key";
         private const float GameMusicFadeDuration = 5f;
         private const float GameMusicVolume = 1f;
         private const string ExplorationMusicResourcePath = "Audio/Game/crypt-knight-dungeon-exploration-loop";
@@ -42,6 +44,8 @@ namespace CryptKnight.Gameplay
         private static readonly Vector2 DoorFrameSouthOffset = new Vector2(0f, -0.28f);
         private static readonly Vector2 DoorFrameEastOffset = new Vector2(0.88f, 0f);
         private static readonly Vector2 DoorFrameWestOffset = new Vector2(-0.88f, 0f);
+        private static readonly Vector2 EnemyDropOffset = new Vector2(0f, 0.85f);
+        private static readonly Vector2 RoomClearDropOffset = new Vector2(-0.85f, 0.85f);
         private static readonly Color DoorColor = new Color(0.55f, 0.40f, 0.18f, 1f);
         private static readonly Color FinalRoomDoorColor = new Color(1f, 0.10f, 0.86f, 1f);
 
@@ -53,10 +57,16 @@ namespace CryptKnight.Gameplay
         private static Sprite doorFrameVerticalSprite;
         private static readonly Dictionary<string, Sprite> doorArchwaySpritesByName = new Dictionary<string, Sprite>();
 
+        // Rooms states are rebuilt on travel between them
+        private readonly Dictionary<Vector2Int, DungeonRoomRuntimeState> roomStates = new Dictionary<Vector2Int, DungeonRoomRuntimeState>();
         private GameObject gameplayRoot;
         private GameObject roomRoot;
         private DungeonRoomNavigator roomNavigator;
         private Transform playerTransform;
+        private LootTableConfiguration lootConfiguration;
+        private LootSystem lootSystem;
+        private LootDistributionRules lootRules;
+        private System.Random lootRandom;
         private AudioClip explorationMusicClip;
         private AudioClip bossMusicClip;
         private AudioSource activeMusicSource;
@@ -116,6 +126,11 @@ namespace CryptKnight.Gameplay
             GameRunState runState = GameManager.Instance.CurrentRun;
             DungeonLayout dungeonLayout = DungeonLayoutGenerator.Generate(runState.DungeonWidth, runState.DungeonHeight, runState.Seed);
             roomNavigator = new DungeonRoomNavigator(dungeonLayout);
+            lootConfiguration = LootTableConfiguration.CreateDefault();
+            lootSystem = new LootSystem(lootConfiguration);
+            lootRules = LootDistributionRules.CreateDefault();
+            lootRandom = new System.Random(runState.Seed ^ 0x4C4F4F54);
+            InitializeRoomStates(dungeonLayout, runState.Seed);
 
             // The layout stores room data
             gameplayRoot = new GameObject("Runtime Gameplay Scene");
@@ -130,37 +145,65 @@ namespace CryptKnight.Gameplay
         {
             StopGameMusic();
 
-            if (gameplayRoot == null)
+            if (gameplayRoot != null)
             {
-                return;
+                Destroy(gameplayRoot);
             }
 
-            Destroy(gameplayRoot);
             gameplayRoot = null;
             roomRoot = null;
             roomNavigator = null;
             playerTransform = null;
+            roomStates.Clear();
+            lootConfiguration = null;
+            lootSystem = null;
+            lootRules = null;
+            lootRandom = null;
         }
 
         public void TravelThroughDoor(RoomDirection direction)
         {
+            TryTravelThroughDoor(direction);
+        }
+
+        public bool CanTravelFromCurrentRoom()
+        {
+            if (roomNavigator == null)
+            {
+                return false;
+            }
+
+            return !GetRoomState(roomNavigator.CurrentRoom.GridPosition).IsLocked;
+        }
+
+        public bool TryTravelThroughDoor(RoomDirection direction)
+        {
+            // Combat/trap rooms stay locked until their state says the room is clear.
+            if (!CanTravelFromCurrentRoom())
+            {
+                return false;
+            }
+
             if (roomNavigator == null || !roomNavigator.TryMove(direction))
             {
-                return;
+                return false;
             }
 
             BuildCurrentRoom(GetSpawnPositionForEntry(direction));
+            return true;
         }
 
         private void BuildCurrentRoom(Vector2 playerSpawnPosition)
         {
             // Rebuild the room so only one room instance is active at a time.
             ClearRoomInstance();
+            DungeonRoom currentRoom = roomNavigator.CurrentRoom;
+            DungeonRoomRuntimeState roomState = GetRoomState(currentRoom.GridPosition);
             CreateRoomFloor(roomRoot.transform);
             CreateRoomWalls(roomRoot.transform);
-            CreateDoors(roomRoot.transform, roomNavigator.CurrentRoom);
-            CreateRoomContents(roomRoot.transform, roomNavigator.CurrentRoom);
-            TransitionToRoomMusic(roomNavigator.CurrentRoom.RoomType);
+            CreateDoors(roomRoot.transform, currentRoom);
+            CreateRoomContents(roomRoot.transform, currentRoom, roomState);
+            TransitionToRoomMusic(currentRoom.RoomType);
 
             if (playerTransform != null)
             {
@@ -239,7 +282,6 @@ namespace CryptKnight.Gameplay
                 return;
             }
 
-            // targetMusicClip tracks so repeated room refreshes do not restart it.
             if (targetMusicClip == targetClip)
             {
                 return;
@@ -488,21 +530,107 @@ namespace CryptKnight.Gameplay
             return player.transform;
         }
 
-        private void CreateTestEnemy(Transform parent, Transform player)
+        private void InitializeRoomStates(DungeonLayout layout, int runSeed)
+        {
+            roomStates.Clear();
+            foreach (DungeonRoom room in layout.Rooms)
+            {
+                roomStates[room.GridPosition] = CreateRoomState(room, runSeed);
+            }
+        }
+
+        private DungeonRoomRuntimeState CreateRoomState(DungeonRoom room, int runSeed)
+        {
+            EnsureLootServices();
+            DungeonRoomRuntimeState state = new DungeonRoomRuntimeState(room.GridPosition, room.RoomType);
+            if (room.RoomType == RoomType.Enemy)
+            {
+                state.SetEnemyCount(EnemyCountPerEnemyRoom);
+            }
+
+            if (room.RoomType == RoomType.Starter)
+            {
+                AddStarterLootToRoomState(state);
+            }
+
+            if (lootRules.ShouldPlaceChest(room.RoomType, runSeed, room.GridPosition))
+            {
+                state.AddChest(lootRules.GetChestSpawnPosition(runSeed, room.GridPosition));
+            }
+
+            if (lootRules.ShouldPlaceKey(room.RoomType, runSeed, room.GridPosition))
+            {
+                TryAddGeneratedKeyToRoomState(state, runSeed, room.GridPosition);
+            }
+
+            state.MarkContentsInitialized();
+            return state;
+        }
+
+        private DungeonRoomRuntimeState GetRoomState(Vector2Int roomPosition)
+        {
+            if (roomStates.TryGetValue(roomPosition, out DungeonRoomRuntimeState state))
+            {
+                return state;
+            }
+
+            if (roomNavigator == null)
+            {
+                throw new System.InvalidOperationException("Room state cannot be created without an active dungeon navigator.");
+            }
+
+            DungeonRoom room = roomNavigator.Layout.TryGetRoom(roomPosition, out DungeonRoom foundRoom)
+                ? foundRoom
+                : roomNavigator.CurrentRoom;
+            state = CreateRoomState(room, GameManager.Instance.CurrentRun?.Seed ?? 0);
+            roomStates[roomPosition] = state;
+            return state;
+        }
+
+        private void TryAddGeneratedKeyToRoomState(DungeonRoomRuntimeState state, int runSeed, Vector2Int roomPosition)
+        {
+            LootItemDefinition keyItem = GetKeyItemDefinition();
+            if (keyItem != null)
+            {
+                state.AddLoot(keyItem, lootRules.GetKeySpawnPosition(runSeed, roomPosition));
+            }
+        }
+
+        private LootItemDefinition GetKeyItemDefinition()
+        {
+            EnsureLootServices();
+            for (int i = 0; i < lootConfiguration.Items.Count; i++)
+            {
+                LootItemDefinition item = lootConfiguration.Items[i];
+                if (item.ItemId == KeyItemId)
+                {
+                    return item;
+                }
+            }
+
+            return null;
+        }
+
+        private void CreateTestEnemy(Transform parent, Transform player, DungeonRoomRuntimeState roomState)
         {
             GameObject enemy = CreateSpriteObject("Test Enemy", parent, new Vector2(4f, 0f), new Vector2(0.8f, 0.8f), new Color(0.72f, 0.18f, 0.22f, 1f));
             enemy.GetComponent<SpriteRenderer>().sortingOrder = 9;
             enemy.AddComponent<CircleCollider2D>().radius = 0.45f;
-            enemy.AddComponent<EnemyHealth>();
+            EnemyHealth enemyHealth = enemy.AddComponent<EnemyHealth>();
+            enemyHealth.Died += defeatedEnemy => HandleEnemyDefeated(roomState, defeatedEnemy.transform.position);
             enemy.AddComponent<TestEnemyShooter>().Initialize(player);
         }
 
-        private void CreateRoomContents(Transform parent, DungeonRoom room)
+        private void CreateRoomContents(Transform parent, DungeonRoom room, DungeonRoomRuntimeState roomState)
         {
             switch (room.RoomType)
             {
                 case RoomType.Enemy:
-                    CreateTestEnemy(parent, playerTransform);
+                    if (roomState.RemainingEnemies > 0)
+                    {
+                        CreateTestEnemy(parent, playerTransform, roomState);
+                    }
+
                     break;
                 case RoomType.Trap:
                     CreateTrapMarker(parent);
@@ -510,11 +638,10 @@ namespace CryptKnight.Gameplay
                 case RoomType.Final:
                     CreateFinalRoomMarker(parent);
                     break;
-                case RoomType.Starter:
-                    CreateTestLootPickups(parent);
-                    CreateStarterChest(parent);
-                    break;
             }
+
+            CreateRoomChests(parent, roomState);
+            CreateRoomLoot(parent, roomState);
         }
 
         private void CreateTrapMarker(Transform parent)
@@ -530,10 +657,144 @@ namespace CryptKnight.Gameplay
             finalMarker.GetComponent<SpriteRenderer>().sortingOrder = 3;
         }
 
-        private void CreateTestLootPickups(Transform parent)
+        private void AddStarterLootToRoomState(DungeonRoomRuntimeState roomState)
         {
-            LootTableConfiguration lootTable = LootTableConfiguration.CreateDefault();
-            Vector2[] spawnPositions =
+            EnsureLootServices();
+            LootTableConfiguration lootTable = lootConfiguration;
+            Vector2[] spawnPositions = GetStarterLootPositions();
+
+            int pickupCount = Mathf.Min(lootTable.Items.Count, spawnPositions.Length);
+            for (int i = 0; i < pickupCount; i++)
+            {
+                roomState.AddLoot(lootTable.Items[i], spawnPositions[i]);
+            }
+        }
+
+        private void CreateRoomChests(Transform parent, DungeonRoomRuntimeState roomState)
+        {
+            for (int i = 0; i < roomState.Chests.Count; i++)
+            {
+                RoomChestInstance chestInstance = roomState.Chests[i];
+                if (!chestInstance.IsOpened)
+                {
+                    CreateLockedChest(parent, roomState, chestInstance);
+                }
+            }
+        }
+
+        private void CreateLockedChest(Transform parent, DungeonRoomRuntimeState roomState, RoomChestInstance chestInstance)
+        {
+            GameObject chestObject = CreateSpriteObject("Locked Chest", parent, chestInstance.Position, Vector2.one, Color.white);
+            chestObject.AddComponent<CircleCollider2D>();
+            LockedChest chest = chestObject.AddComponent<LockedChest>();
+            EnsureLootServices();
+            chest.Initialize(
+                lootConfiguration,
+                (itemDefinition, rewardPosition) =>
+                {
+                    AddLootToRoom(roomState, itemDefinition, rewardPosition, chest.transform.position);
+                },
+                null,
+                // Mark chest as opened for deletion
+                () => roomState.MarkChestOpened(chestInstance.Id));
+        }
+
+        private void CreateRoomLoot(Transform parent, DungeonRoomRuntimeState roomState)
+        {
+            for (int i = 0; i < roomState.Loot.Count; i++)
+            {
+                RoomLootInstance lootInstance = roomState.Loot[i];
+                if (!lootInstance.IsCollected)
+                {
+                    CreateLootPickup(parent, roomState, lootInstance);
+                }
+            }
+        }
+
+        private LootPickup CreateLootPickup(Transform parent, DungeonRoomRuntimeState roomState, RoomLootInstance lootInstance)
+        {
+            GameObject pickupObject = new GameObject($"Pickup {lootInstance.ItemDefinition.DisplayName}");
+            pickupObject.transform.SetParent(parent, false);
+            pickupObject.transform.position = lootInstance.Position;
+
+            pickupObject.AddComponent<SpriteRenderer>();
+            pickupObject.AddComponent<CircleCollider2D>();
+            LootPickup pickup = pickupObject.AddComponent<LootPickup>();
+            pickup.Initialize(lootInstance.ItemDefinition, _ => roomState.MarkLootCollected(lootInstance.Id));
+            return pickup;
+        }
+
+        private void HandleEnemyDefeated(DungeonRoomRuntimeState roomState, Vector2 enemyPosition)
+        {
+            if (roomState == null)
+            {
+                return;
+            }
+
+            bool roomCleared = roomState.DefeatEnemy();
+            // Enemy and room-clear rewards are intentionally separate rolls, so the last enemy can drop both.
+            RollAndAddLoot(roomState, LootSourceType.Enemy, enemyPosition + EnemyDropOffset, enemyPosition);
+            if (roomCleared)
+            {
+                RollAndAddLoot(roomState, LootSourceType.RoomClear, enemyPosition + RoomClearDropOffset, enemyPosition);
+            }
+        }
+
+        private void RollAndAddLoot(DungeonRoomRuntimeState roomState, LootSourceType sourceType, Vector2 position, Vector2 launchStart)
+        {
+            EnsureLootServices();
+            LootDropResult result = lootSystem.RollDrop(sourceType, lootRandom);
+            if (result.HasDrop)
+            {
+                AddLootToRoom(roomState, result.Item, position, launchStart);
+            }
+        }
+
+        private void AddLootToRoom(DungeonRoomRuntimeState roomState, LootItemDefinition itemDefinition, Vector2 position, Vector2 launchStart)
+        {
+            Vector2 clampedPosition = ClampToPlayableRoom(position);
+            // Drops enter room state first so uncollected rewards survive room changes.
+            RoomLootInstance lootInstance = roomState.AddLoot(itemDefinition, clampedPosition);
+            if (!IsCurrentRoom(roomState) || roomRoot == null)
+            {
+                return;
+            }
+
+            LootPickup pickup = CreateLootPickup(roomRoot.transform, roomState, lootInstance);
+            pickup.PlaySpawnLaunch(launchStart, clampedPosition, GetPlayableRoomBounds());
+        }
+
+        private bool IsCurrentRoom(DungeonRoomRuntimeState roomState)
+        {
+            return roomNavigator != null && roomNavigator.CurrentRoom.GridPosition == roomState.GridPosition;
+        }
+
+        private void EnsureLootServices()
+        {
+            if (lootConfiguration == null)
+            {
+                lootConfiguration = LootTableConfiguration.CreateDefault();
+            }
+
+            if (lootSystem == null)
+            {
+                lootSystem = new LootSystem(lootConfiguration);
+            }
+
+            if (lootRules == null)
+            {
+                lootRules = LootDistributionRules.CreateDefault();
+            }
+
+            if (lootRandom == null)
+            {
+                lootRandom = new System.Random(GameManager.Instance.CurrentRun?.Seed ?? 0);
+            }
+        }
+
+        private static Vector2[] GetStarterLootPositions()
+        {
+            return new[]
             {
                 new Vector2(-5.0f, 2.45f),
                 new Vector2(-3.1f, 1.45f),
@@ -541,40 +802,6 @@ namespace CryptKnight.Gameplay
                 new Vector2(2.1f, 2.45f),
                 new Vector2(4.2f, 1.45f)
             };
-
-            int pickupCount = Mathf.Min(lootTable.Items.Count, spawnPositions.Length);
-            for (int i = 0; i < pickupCount; i++)
-            {
-                CreateLootPickup(parent, lootTable.Items[i], spawnPositions[i]);
-            }
-        }
-
-        private void CreateStarterChest(Transform parent)
-        {
-            GameObject chestObject = CreateSpriteObject("Locked Chest", parent, new Vector2(0f, -2.35f), Vector2.one, Color.white);
-            chestObject.AddComponent<CircleCollider2D>();
-            LockedChest chest = chestObject.AddComponent<LockedChest>();
-            chest.Initialize(
-                LootTableConfiguration.CreateDefault(),
-                (itemDefinition, rewardPosition) =>
-                {
-                    Vector2 clampedRewardPosition = ClampToPlayableRoom(rewardPosition);
-                    LootPickup pickup = CreateLootPickup(parent, itemDefinition, clampedRewardPosition);
-                    pickup.PlaySpawnLaunch(chest.transform.position, clampedRewardPosition, GetPlayableRoomBounds());
-                });
-        }
-
-        private LootPickup CreateLootPickup(Transform parent, LootItemDefinition itemDefinition, Vector2 position)
-        {
-            GameObject pickupObject = new GameObject($"Pickup {itemDefinition.DisplayName}");
-            pickupObject.transform.SetParent(parent, false);
-            pickupObject.transform.position = position;
-
-            pickupObject.AddComponent<SpriteRenderer>();
-            pickupObject.AddComponent<CircleCollider2D>();
-            LootPickup pickup = pickupObject.AddComponent<LootPickup>();
-            pickup.Initialize(itemDefinition);
-            return pickup;
         }
 
         private static Vector2 ClampToPlayableRoom(Vector2 position)

@@ -1,10 +1,12 @@
 using System;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using CryptKnight.Data;
 using CryptKnight.Loot;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace CryptKnight.Tests.EditMode
 {
@@ -24,6 +26,18 @@ namespace CryptKnight.Tests.EditMode
             }
 
             createdObjects.Clear();
+
+            GameObject gameManager = GameObject.Find("Game Manager");
+            if (gameManager != null)
+            {
+                UnityEngine.Object.DestroyImmediate(gameManager);
+            }
+
+            GameObject sfxObject = GameObject.Find("Crypt Knight SFX");
+            if (sfxObject != null)
+            {
+                UnityEngine.Object.DestroyImmediate(sfxObject);
+            }
         }
 
         [Test]
@@ -58,6 +72,7 @@ namespace CryptKnight.Tests.EditMode
             {
                 Assert.That(item.CanAppearFrom(LootSourceType.Enemy), Is.True, item.ItemId);
                 Assert.That(item.CanAppearFrom(LootSourceType.Chest), Is.True, item.ItemId);
+                Assert.That(item.CanAppearFrom(LootSourceType.RoomClear), Is.True, item.ItemId);
                 Assert.That(item.CanAppearFrom(LootSourceType.Shop), Is.True, item.ItemId);
             }
         }
@@ -69,6 +84,7 @@ namespace CryptKnight.Tests.EditMode
 
             Assert.That(configuration.GetDropRate(LootSourceType.Enemy), Is.EqualTo(0.10f));
             Assert.That(configuration.GetDropRate(LootSourceType.Chest), Is.EqualTo(1f));
+            Assert.That(configuration.GetDropRate(LootSourceType.RoomClear), Is.EqualTo(0.20f));
             Assert.That(configuration.GetDropRate(LootSourceType.Shop), Is.EqualTo(1f));
         }
 
@@ -116,6 +132,32 @@ namespace CryptKnight.Tests.EditMode
 
             Assert.That(result.HasDrop, Is.True);
             Assert.That(result.Item.ItemId, Is.Not.EqualTo("key"));
+        }
+
+        [Test]
+        public void FilteredDropsCanReturnNothing()
+        {
+            LootSystem lootSystem = new LootSystem(LootTableConfiguration.CreateDefault());
+
+            LootDropResult result = lootSystem.RollDrop(LootSourceType.Chest, 0f, 0, _ => false);
+
+            Assert.That(result.HasDrop, Is.False);
+            Assert.That(result.Item, Is.Null);
+        }
+
+        [Test]
+        public void MissingSourceDropsNothing()
+        {
+            LootSystem lootSystem = new LootSystem(new LootTableConfiguration(
+                Array.Empty<LootItemDefinition>(),
+                new System.Collections.Generic.Dictionary<LootSourceType, float>
+                {
+                    { LootSourceType.Enemy, 1f }
+                }));
+
+            LootDropResult result = lootSystem.RollDrop(LootSourceType.Enemy, new System.Random(12345));
+
+            Assert.That(result.HasDrop, Is.False);
         }
 
         [Test]
@@ -393,6 +435,22 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
+        public void EffectTextClampsBadQuantity()
+        {
+            LootItemDefinition item = new LootItemDefinition(
+                "key",
+                "Key",
+                string.Empty,
+                new PlayerStatModifier(),
+                new[] { LootSourceType.Chest },
+                keyAmount: 1);
+
+            string effectText = LootItemEffectFormatter.FormatEffects(item, 0);
+
+            Assert.That(effectText, Is.EqualTo("+1 key"));
+        }
+
+        [Test]
         public void EffectTextHandlesEmptyItems()
         {
             LootItemDefinition item = new LootItemDefinition(
@@ -517,7 +575,99 @@ namespace CryptKnight.Tests.EditMode
             Assert.That(pickup.IsPromptVisible, Is.False);
         }
 
-        private LootPickup CreatePickup(LootItemDefinition item)
+        [Test]
+        public void PickupCollectsOnce()
+        {
+            CryptKnight.Application.GameManager.Instance.StartNewRun();
+            LootItemDefinition item = new LootItemDefinition(
+                "test_relic",
+                "Test Relic",
+                string.Empty,
+                new PlayerStatModifier(damageBonus: 1),
+                new[] { LootSourceType.Chest });
+            int collectedCount = 0;
+            LootPickup pickup = CreatePickup(item, _ => collectedCount++);
+
+            LogAssert.Expect(LogType.Error, new Regex("Destroy may not be called from edit mode"));
+            bool firstPickup = pickup.TryPickUp();
+            bool secondPickup = pickup.TryPickUp();
+
+            Assert.That(firstPickup, Is.True);
+            Assert.That(secondPickup, Is.False);
+            Assert.That(collectedCount, Is.EqualTo(1));
+            Assert.That(CryptKnight.Application.GameManager.Instance.CurrentRun.CollectedItems.Single().ItemId, Is.EqualTo("test_relic"));
+        }
+
+        [Test]
+        public void OnePressPicksClosestItem()
+        {
+            CryptKnight.Application.GameManager.Instance.StartNewRun();
+            LootItemDefinition nearItem = new LootItemDefinition(
+                "near_relic",
+                "Near Relic",
+                string.Empty,
+                new PlayerStatModifier(damageBonus: 1),
+                new[] { LootSourceType.Chest });
+            LootItemDefinition farItem = new LootItemDefinition(
+                "far_relic",
+                "Far Relic",
+                string.Empty,
+                new PlayerStatModifier(damageBonus: 1),
+                new[] { LootSourceType.Chest });
+            int nearCollected = 0;
+            int farCollected = 0;
+            LootPickup nearPickup = CreatePickup(nearItem, _ => nearCollected++);
+            LootPickup farPickup = CreatePickup(farItem, _ => farCollected++);
+            nearPickup.transform.position = new Vector2(0.2f, 0f);
+            farPickup.transform.position = new Vector2(0.9f, 0f);
+            Collider2D playerCollider = CreatePlayerCollider();
+            playerCollider.transform.position = Vector2.zero;
+            InvokeTrigger(nearPickup, "OnTriggerEnter2D", playerCollider);
+            InvokeTrigger(farPickup, "OnTriggerEnter2D", playerCollider);
+
+            bool farPicked = farPickup.TryPickUpForPlayer(playerCollider.transform);
+            LogAssert.Expect(LogType.Error, new Regex("Destroy may not be called from edit mode"));
+            bool nearPicked = nearPickup.TryPickUpForPlayer(playerCollider.transform);
+            bool secondFarAttempt = farPickup.TryPickUpForPlayer(playerCollider.transform);
+
+            Assert.That(farPicked, Is.False);
+            Assert.That(nearPicked, Is.True);
+            Assert.That(secondFarAttempt, Is.False);
+            Assert.That(nearCollected, Is.EqualTo(1));
+            Assert.That(farCollected, Is.EqualTo(0));
+            Assert.That(CryptKnight.Application.GameManager.Instance.CurrentRun.CollectedItems.Single().ItemId, Is.EqualTo("near_relic"));
+        }
+
+        [Test]
+        public void PickupDoesNotCollectWithoutRun()
+        {
+            LootItemDefinition item = new LootItemDefinition(
+                "test_relic",
+                "Test Relic",
+                string.Empty,
+                new PlayerStatModifier(),
+                new[] { LootSourceType.Chest });
+            int collectedCount = 0;
+            LootPickup pickup = CreatePickup(item, _ => collectedCount++);
+
+            bool pickedUp = pickup.TryPickUp();
+
+            Assert.That(pickedUp, Is.False);
+            Assert.That(collectedCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void PickupRejectsMissingItem()
+        {
+            CryptKnight.Application.GameManager.Instance.StartNewRun();
+            LootPickup pickup = CreatePickup(null);
+
+            bool pickedUp = pickup.TryPickUp();
+
+            Assert.That(pickedUp, Is.False);
+        }
+
+        private LootPickup CreatePickup(LootItemDefinition item, Action<LootPickup> onCollected = null)
         {
             GameObject pickupObject = new GameObject("Test Pickup");
             createdObjects.Add(pickupObject);
@@ -525,7 +675,7 @@ namespace CryptKnight.Tests.EditMode
             pickupObject.AddComponent<SpriteRenderer>();
             pickupObject.AddComponent<CircleCollider2D>();
             LootPickup pickup = pickupObject.AddComponent<LootPickup>();
-            pickup.Initialize(item);
+            pickup.Initialize(item, onCollected);
             return pickup;
         }
 

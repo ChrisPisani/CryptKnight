@@ -102,6 +102,7 @@ namespace CryptKnight.Loot
             {
                 LootSourceType.Enemy,
                 LootSourceType.Chest,
+                LootSourceType.RoomClear,
                 LootSourceType.Shop
             };
 
@@ -118,6 +119,7 @@ namespace CryptKnight.Loot
                 {
                     { LootSourceType.Enemy, 0.10f },
                     { LootSourceType.Chest, 1f },
+                    { LootSourceType.RoomClear, 0.20f },
                     { LootSourceType.Shop, 1f }
                 });
         }

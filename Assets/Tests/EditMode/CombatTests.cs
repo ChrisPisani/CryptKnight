@@ -129,6 +129,27 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
+        public void ProjectileVisualFacesDirection()
+        {
+            ProjectileController projectile = ProjectileFactory.CreateCircleProjectile(
+                "Projectile",
+                Vector2.zero,
+                Vector2.up,
+                DamageableTarget.Enemy,
+                1,
+                8f,
+                0.135f,
+                2f,
+                Color.white,
+                null);
+            createdObjects.Add(projectile.gameObject);
+
+            Transform visual = projectile.transform.Find("Visual");
+
+            Assert.That(visual.localRotation.eulerAngles.z, Is.EqualTo(90f).Within(0.001f));
+        }
+
+        [Test]
         public void ProjectileHitsMatchingTarget()
         {
             ProjectileController projectile = CreateProjectile(DamageableTarget.Enemy);
@@ -164,6 +185,47 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
+        public void ProjectileIgnoresBeforeConfigured()
+        {
+            GameObject projectileObject = new GameObject("Projectile");
+            createdObjects.Add(projectileObject);
+            projectileObject.AddComponent<Rigidbody2D>();
+            projectileObject.AddComponent<CircleCollider2D>();
+            ProjectileController projectile = projectileObject.AddComponent<ProjectileController>();
+            EnemyHealth enemyHealth = CreateEnemy(out Collider2D enemyCollider);
+
+            InvokeTrigger(projectile, enemyCollider);
+
+            Assert.That(enemyHealth.CurrentHealth, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void ProjectileStopsAtBlocker()
+        {
+            ProjectileController projectile = CreateProjectile(DamageableTarget.Enemy);
+            GameObject wall = new GameObject("Wall");
+            createdObjects.Add(wall);
+            Collider2D wallCollider = wall.AddComponent<BoxCollider2D>();
+
+            LogAssert.Expect(LogType.Error, new Regex("Destroy may not be called from edit mode"));
+            InvokeTrigger(projectile, wallCollider);
+
+            Assert.That(projectile.Damage, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void ProjectileExpiresAfterLifetime()
+        {
+            ProjectileController projectile = CreateProjectile(DamageableTarget.Enemy);
+            projectile.Configure(Vector2.right, 8f, 1, DamageableTarget.Enemy, -0.01f);
+
+            LogAssert.Expect(LogType.Error, new Regex("Destroy may not be called from edit mode"));
+            InvokeUpdate(projectile);
+
+            Assert.That(projectile.TargetType, Is.EqualTo(DamageableTarget.Enemy));
+        }
+
+        [Test]
         public void EnemyTakesDamage()
         {
             GameObject enemyObject = new GameObject("Enemy");
@@ -193,6 +255,25 @@ namespace CryptKnight.Tests.EditMode
             enemyHealth.ApplyDamage(99);
             enemyHealth.ApplyDamage(1);
             Assert.That(enemyHealth.CurrentHealth, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void EnemyDeathNotifiesOnce()
+        {
+            GameObject enemyObject = new GameObject("Enemy");
+            createdObjects.Add(enemyObject);
+
+            EnemyHealth enemyHealth = enemyObject.AddComponent<EnemyHealth>();
+            InvokeAwake(enemyHealth);
+
+            int deathCount = 0;
+            enemyHealth.Died += _ => deathCount++;
+
+            LogAssert.Expect(LogType.Error, new Regex("Destroy may not be called from edit mode"));
+            enemyHealth.ApplyDamage(99);
+            enemyHealth.ApplyDamage(99);
+
+            Assert.That(deathCount, Is.EqualTo(1));
         }
 
         private static void InvokeAwake(EnemyHealth enemyHealth)
@@ -230,6 +311,13 @@ namespace CryptKnight.Tests.EditMode
             MethodInfo triggerMethod = typeof(ProjectileController).GetMethod("OnTriggerEnter2D", BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.That(triggerMethod, Is.Not.Null);
             triggerMethod.Invoke(projectile, new object[] { other });
+        }
+
+        private static void InvokeUpdate(ProjectileController projectile)
+        {
+            MethodInfo updateMethod = typeof(ProjectileController).GetMethod("Update", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(updateMethod, Is.Not.Null);
+            updateMethod.Invoke(projectile, null);
         }
 
         private static float GetRenderedProjectileDiameter(ProjectileController projectile)

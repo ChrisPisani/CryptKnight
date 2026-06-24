@@ -1,3 +1,4 @@
+using System;
 using CryptKnight.Combat;
 using UnityEngine;
 
@@ -10,6 +11,8 @@ namespace CryptKnight.Enemies
 
         public DamageableTarget TargetType => DamageableTarget.Enemy;
         public int CurrentHealth { get; private set; }
+        // update room state and roll defeat loot before the enemy is destroyed
+        public event Action<EnemyHealth> Died;
 
         private void Awake()
         {
@@ -26,6 +29,7 @@ namespace CryptKnight.Enemies
             CurrentHealth = Mathf.Max(0, CurrentHealth - damage);
             if (CurrentHealth == 0)
             {
+                Died?.Invoke(this);
                 Destroy(gameObject);
             }
         }
