@@ -128,6 +128,21 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
+        public void StarterRoomGetsKeyAndChest()
+        {
+            GameObject controllerObject = new GameObject("Gameplay Controller");
+            createdObjects.Add(controllerObject);
+            GameplaySceneController controller = controllerObject.AddComponent<GameplaySceneController>();
+            DungeonRoomRuntimeState roomState = new DungeonRoomRuntimeState(Vector2Int.zero, RoomType.Starter);
+
+            InvokePrivateMethod(controller, "AddStarterGiftToRoomState", roomState);
+
+            Assert.That(roomState.Loot, Has.Count.EqualTo(1));
+            Assert.That(roomState.Loot.Single().ItemDefinition.ItemId, Is.EqualTo("key"));
+            Assert.That(roomState.Chests, Has.Count.EqualTo(1));
+        }
+
+        [Test]
         public void DefeatedEnemyStaysGone()
         {
             DungeonRoomRuntimeState roomState = CreateEnemyRoomState();
@@ -266,6 +281,13 @@ namespace CryptKnight.Tests.EditMode
             FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.That(field, Is.Not.Null);
             field.SetValue(target, value);
+        }
+
+        private static void InvokePrivateMethod(object target, string methodName, params object[] arguments)
+        {
+            MethodInfo method = target.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(method, Is.Not.Null);
+            method.Invoke(target, arguments);
         }
     }
 }

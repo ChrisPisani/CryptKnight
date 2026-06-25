@@ -23,7 +23,7 @@ namespace CryptKnight.Loot
         private const float BobSpeed = 3.2f;
         private const float SpawnLaunchSeconds = 0.32f;
         private const float SpawnLaunchArcHeight = 0.45f;
-        private const int PickupSortingOrder = 4;
+        private const int PickupSortingOrder = 9;
         // All active pickups are checked for interact press so multiple in range items pick up closest.
         private static readonly List<LootPickup> ActivePickups = new List<LootPickup>();
         private static int claimedPickupFrame = -1;
@@ -57,6 +57,7 @@ namespace CryptKnight.Loot
             itemDefinition = definition;
             collected = onCollected;
             EnsureComponents();
+            RegisterActivePickup();
             ConfigureVisual();
             ConfigurePrompt();
             ConfigurePromptText();
@@ -90,10 +91,7 @@ namespace CryptKnight.Loot
 
         private void OnEnable()
         {
-            if (!ActivePickups.Contains(this))
-            {
-                ActivePickups.Add(this);
-            }
+            RegisterActivePickup();
         }
 
         private void OnDisable()
@@ -153,6 +151,7 @@ namespace CryptKnight.Loot
 
         public bool TryPickUpForPlayer(Transform playerTransform)
         {
+            RegisterActivePickup();
             // only the closest pickup can consume this frame.
             if (playerTransform == null || !CanClaimPickupThisFrame(playerTransform) || !IsClosestPickupTo(playerTransform))
             {
@@ -190,11 +189,17 @@ namespace CryptKnight.Loot
 
         private static bool CanClaimPickupThisFrame(Transform playerTransform)
         {
+            if (claimedPickupPlayer == null)
+            {
+                claimedPickupFrame = -1;
+            }
+
             return claimedPickupFrame != Time.frameCount || claimedPickupPlayer != playerTransform;
         }
 
         private bool IsClosestPickupTo(Transform playerTransform)
         {
+            PruneActivePickups();
             if (!IsPlayerInRange || playerInRange != playerTransform)
             {
                 return false;
@@ -229,6 +234,27 @@ namespace CryptKnight.Loot
             }
 
             return true;
+        }
+
+        private void RegisterActivePickup()
+        {
+            PruneActivePickups();
+            if (!ActivePickups.Contains(this))
+            {
+                ActivePickups.Add(this);
+            }
+        }
+
+        private static void PruneActivePickups()
+        {
+            for (int i = ActivePickups.Count - 1; i >= 0; i--)
+            {
+                LootPickup pickup = ActivePickups[i];
+                if (pickup == null || !pickup.isActiveAndEnabled)
+                {
+                    ActivePickups.RemoveAt(i);
+                }
+            }
         }
 
         private void EnsureComponents()

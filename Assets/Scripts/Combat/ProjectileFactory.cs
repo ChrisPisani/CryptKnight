@@ -13,6 +13,7 @@ namespace CryptKnight.Combat
         private static Sprite circleSprite;
         private static Sprite playerProjectileSprite;
         private static Sprite enemyProjectileSprite;
+        private static Sprite spiderPurpleProjectileSprite;
 
         // Projectiles are generated from code here, maybe it should be a prefab?
         public static ProjectileController CreateCircleProjectile(
@@ -25,7 +26,10 @@ namespace CryptKnight.Combat
             float radius,
             float lifetimeSeconds,
             Color color,
-            Transform parent)
+            Transform parent,
+            Rect? bounceBounds = null,
+            int maxBounces = 0,
+            ProjectileVisualStyle visualStyle = ProjectileVisualStyle.Default)
         {
             Vector2 normalizedDirection = direction.sqrMagnitude > 0.001f ? direction.normalized : Vector2.right;
             GameObject projectileObject = new GameObject(objectName);
@@ -36,8 +40,8 @@ namespace CryptKnight.Combat
             visualObject.transform.SetParent(projectileObject.transform, false);
 
             SpriteRenderer renderer = visualObject.AddComponent<SpriteRenderer>();
-            renderer.sprite = GetProjectileSprite(targetType);
-            renderer.color = renderer.sprite == circleSprite ? color : Color.white;
+            renderer.sprite = GetProjectileSprite(targetType, visualStyle);
+            renderer.color = GetRendererColor(renderer.sprite, color, visualStyle);
             renderer.sortingOrder = 8;
             SetProjectileVisualTransform(visualObject.transform, renderer, normalizedDirection, ProjectileVisualDiameter);
 
@@ -47,6 +51,11 @@ namespace CryptKnight.Combat
             projectileObject.AddComponent<Rigidbody2D>();
             ProjectileController projectile = projectileObject.AddComponent<ProjectileController>();
             projectile.Configure(normalizedDirection, speed, damage, targetType, lifetimeSeconds);
+            if (bounceBounds.HasValue && maxBounces > 0)
+            {
+                projectile.ConfigureBounce(bounceBounds.Value, maxBounces);
+            }
+
             return projectile;
         }
 
@@ -68,7 +77,19 @@ namespace CryptKnight.Combat
             visualTransform.localRotation = Quaternion.Euler(0f, 0f, angle);
         }
 
-        private static Sprite GetProjectileSprite(DamageableTarget targetType)
+        private static Color GetRendererColor(Sprite sprite, Color fallbackColor, ProjectileVisualStyle visualStyle)
+        {
+            if (sprite == circleSprite)
+            {
+                return fallbackColor;
+            }
+
+            return visualStyle == ProjectileVisualStyle.SpiderPurple && sprite == enemyProjectileSprite
+                ? new Color(0.85f, 0.25f, 1f, 1f)
+                : Color.white;
+        }
+
+        private static Sprite GetProjectileSprite(DamageableTarget targetType, ProjectileVisualStyle visualStyle)
         {
             // targetType is who the projectile can damage
             if (targetType == DamageableTarget.Enemy)
@@ -78,7 +99,9 @@ namespace CryptKnight.Combat
 
             if (targetType == DamageableTarget.Player)
             {
-                return GetEnemyProjectileSprite();
+                return visualStyle == ProjectileVisualStyle.SpiderPurple
+                    ? GetSpiderPurpleProjectileSprite()
+                    : GetEnemyProjectileSprite();
             }
 
             return GetCircleSprite();
@@ -102,6 +125,68 @@ namespace CryptKnight.Combat
             }
 
             return enemyProjectileSprite != null ? enemyProjectileSprite : GetCircleSprite();
+        }
+
+        private static Sprite GetSpiderPurpleProjectileSprite()
+        {
+            if (spiderPurpleProjectileSprite != null)
+            {
+                return spiderPurpleProjectileSprite;
+            }
+
+            Sprite sourceSprite = GetEnemyProjectileSprite();
+            spiderPurpleProjectileSprite = TryCreateRecoloredSprite(sourceSprite, new Color(0.85f, 0.25f, 1f, 1f));
+            return spiderPurpleProjectileSprite != null ? spiderPurpleProjectileSprite : sourceSprite;
+        }
+
+        private static Sprite TryCreateRecoloredSprite(Sprite sourceSprite, Color targetColor)
+        {
+            if (sourceSprite == null || sourceSprite == circleSprite)
+            {
+                return null;
+            }
+
+            try
+            {
+                Rect sourceRect = sourceSprite.textureRect;
+                Texture2D sourceTexture = sourceSprite.texture;
+                Color[] sourcePixels = sourceTexture.GetPixels(
+                    Mathf.RoundToInt(sourceRect.x),
+                    Mathf.RoundToInt(sourceRect.y),
+                    Mathf.RoundToInt(sourceRect.width),
+                    Mathf.RoundToInt(sourceRect.height));
+                Color[] recoloredPixels = new Color[sourcePixels.Length];
+
+                for (int i = 0; i < sourcePixels.Length; i++)
+                {
+                    Color pixel = sourcePixels[i];
+                    float brightness = Mathf.Max(pixel.r, pixel.g, pixel.b);
+                    recoloredPixels[i] = new Color(
+                        targetColor.r * brightness,
+                        targetColor.g * brightness,
+                        targetColor.b * brightness,
+                        pixel.a);
+                }
+
+                Texture2D recoloredTexture = new Texture2D(
+                    Mathf.RoundToInt(sourceRect.width),
+                    Mathf.RoundToInt(sourceRect.height),
+                    TextureFormat.RGBA32,
+                    false);
+                recoloredTexture.filterMode = sourceTexture.filterMode;
+                recoloredTexture.SetPixels(recoloredPixels);
+                recoloredTexture.Apply();
+
+                return Sprite.Create(
+                    recoloredTexture,
+                    new Rect(0f, 0f, recoloredTexture.width, recoloredTexture.height),
+                    new Vector2(sourceSprite.pivot.x / sourceRect.width, sourceSprite.pivot.y / sourceRect.height),
+                    sourceSprite.pixelsPerUnit);
+            }
+            catch (UnityException)
+            {
+                return null;
+            }
         }
 
         private static Sprite LoadEditorSprite(string assetPath)

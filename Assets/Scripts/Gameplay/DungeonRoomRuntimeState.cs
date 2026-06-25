@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using CryptKnight.Dungeon;
+using CryptKnight.Enemies;
 using CryptKnight.Loot;
 using UnityEngine;
 
@@ -10,8 +11,10 @@ namespace CryptKnight.Gameplay
     {
         private readonly List<RoomLootInstance> loot = new List<RoomLootInstance>();
         private readonly List<RoomChestInstance> chests = new List<RoomChestInstance>();
+        private readonly List<RoomEnemyInstance> enemies = new List<RoomEnemyInstance>();
         private int nextLootId;
         private int nextChestId;
+        private int nextEnemyId;
 
         public DungeonRoomRuntimeState(Vector2Int gridPosition, RoomType roomType)
         {
@@ -30,6 +33,7 @@ namespace CryptKnight.Gameplay
         public bool IsLocked => RoomType != RoomType.Starter && RoomType != RoomType.Final && RemainingEnemies > 0;
         public IReadOnlyList<RoomLootInstance> Loot => loot;
         public IReadOnlyList<RoomChestInstance> Chests => chests;
+        public IReadOnlyList<RoomEnemyInstance> Enemies => enemies;
 
         public void MarkContentsInitialized()
         {
@@ -38,10 +42,34 @@ namespace CryptKnight.Gameplay
 
         public void SetEnemyCount(int enemyCount)
         {
+            enemies.Clear();
+            nextEnemyId = 0;
             TotalEnemies = Mathf.Max(0, enemyCount);
             DefeatedEnemies = 0;
             RemainingEnemies = TotalEnemies;
             IsCleared = TotalEnemies == 0 ? IsCleared : false;
+        }
+
+        public RoomEnemyInstance AddEnemy(EnemyKind kind, Vector2 position)
+        {
+            RoomEnemyInstance instance = new RoomEnemyInstance(nextEnemyId++, kind, position);
+            enemies.Add(instance);
+            TotalEnemies++;
+            RemainingEnemies++;
+            IsCleared = false;
+            return instance;
+        }
+
+        public bool MarkEnemyDefeated(int enemyId)
+        {
+            RoomEnemyInstance instance = FindEnemy(enemyId);
+            if (instance == null || instance.IsDefeated)
+            {
+                return false;
+            }
+
+            instance.MarkDefeated();
+            return DefeatEnemy();
         }
 
         public bool DefeatEnemy()
@@ -126,6 +154,19 @@ namespace CryptKnight.Gameplay
 
             return null;
         }
+
+        private RoomEnemyInstance FindEnemy(int enemyId)
+        {
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                if (enemies[i].Id == enemyId)
+                {
+                    return enemies[i];
+                }
+            }
+
+            return null;
+        }
     }
 
     public sealed class RoomLootInstance
@@ -163,6 +204,26 @@ namespace CryptKnight.Gameplay
         public void MarkOpened()
         {
             IsOpened = true;
+        }
+    }
+
+    public sealed class RoomEnemyInstance
+    {
+        public RoomEnemyInstance(int id, EnemyKind kind, Vector2 position)
+        {
+            Id = id;
+            Kind = kind;
+            Position = position;
+        }
+
+        public int Id { get; }
+        public EnemyKind Kind { get; }
+        public Vector2 Position { get; }
+        public bool IsDefeated { get; private set; }
+
+        public void MarkDefeated()
+        {
+            IsDefeated = true;
         }
     }
 }

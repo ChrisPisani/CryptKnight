@@ -94,16 +94,73 @@ namespace CryptKnight.Tests.EditMode
                 2f,
                 Color.white,
                 null);
+            ProjectileController spiderProjectile = ProjectileFactory.CreateCircleProjectile(
+                "Spider Projectile",
+                Vector2.zero,
+                Vector2.right,
+                DamageableTarget.Player,
+                1,
+                8f,
+                0.135f,
+                2f,
+                new Color(0.85f, 0.25f, 1f, 1f),
+                null,
+                null,
+                0,
+                ProjectileVisualStyle.SpiderPurple);
             createdObjects.Add(playerProjectile.gameObject);
             createdObjects.Add(enemyProjectile.gameObject);
+            createdObjects.Add(spiderProjectile.gameObject);
 
             CircleCollider2D playerCollider = playerProjectile.GetComponent<CircleCollider2D>();
             CircleCollider2D enemyCollider = enemyProjectile.GetComponent<CircleCollider2D>();
+            CircleCollider2D spiderCollider = spiderProjectile.GetComponent<CircleCollider2D>();
 
             Assert.That(playerCollider.radius, Is.EqualTo(0.135f));
             Assert.That(enemyCollider.radius, Is.EqualTo(0.135f));
+            Assert.That(spiderCollider.radius, Is.EqualTo(0.135f));
             Assert.That(GetRenderedProjectileDiameter(playerProjectile), Is.EqualTo(0.54f).Within(0.001f));
             Assert.That(GetRenderedProjectileDiameter(enemyProjectile), Is.EqualTo(0.54f).Within(0.001f));
+            Assert.That(GetRenderedProjectileDiameter(spiderProjectile), Is.EqualTo(0.54f).Within(0.001f));
+        }
+
+        [Test]
+        public void SpiderProjectileLooksDifferent()
+        {
+            ProjectileController zombieProjectile = ProjectileFactory.CreateCircleProjectile(
+                "Zombie Projectile",
+                Vector2.zero,
+                Vector2.right,
+                DamageableTarget.Player,
+                1,
+                8f,
+                0.135f,
+                2f,
+                new Color(1f, 0.25f, 0.2f, 1f),
+                null);
+            ProjectileController spiderProjectile = ProjectileFactory.CreateCircleProjectile(
+                "Spider Projectile",
+                Vector2.zero,
+                Vector2.right,
+                DamageableTarget.Player,
+                1,
+                8f,
+                0.135f,
+                2f,
+                new Color(0.85f, 0.25f, 1f, 1f),
+                null,
+                null,
+                0,
+                ProjectileVisualStyle.SpiderPurple);
+            createdObjects.Add(zombieProjectile.gameObject);
+            createdObjects.Add(spiderProjectile.gameObject);
+
+            SpriteRenderer zombieRenderer = GetProjectileRenderer(zombieProjectile);
+            SpriteRenderer spiderRenderer = GetProjectileRenderer(spiderProjectile);
+
+            bool sameSprite = zombieRenderer.sprite == spiderRenderer.sprite;
+            bool sameColor = zombieRenderer.color == spiderRenderer.color;
+            Assert.That(sameSprite && sameColor, Is.False);
         }
 
         [Test]
@@ -226,6 +283,34 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
+        public void BouncingProjectileBouncesOnce()
+        {
+            ProjectileController projectile = CreateProjectile(DamageableTarget.Player);
+            Rigidbody2D body = projectile.GetComponent<Rigidbody2D>();
+            projectile.ConfigureBounce(Rect.MinMaxRect(-1f, -1f, 1f, 1f), 1);
+            projectile.transform.position = new Vector2(2f, 0f);
+            body.linearVelocity = Vector2.right * 4f;
+
+            InvokeUpdate(projectile);
+
+            Assert.That(projectile.BouncesRemaining, Is.EqualTo(0));
+            Assert.That(body.linearVelocity.x, Is.LessThan(0f));
+        }
+
+        [Test]
+        public void BouncingProjectileStopsAfterBounce()
+        {
+            ProjectileController projectile = CreateProjectile(DamageableTarget.Player);
+            projectile.ConfigureBounce(Rect.MinMaxRect(-1f, -1f, 1f, 1f), 0);
+            projectile.transform.position = new Vector2(2f, 0f);
+
+            LogAssert.Expect(LogType.Error, new Regex("Destroy may not be called from edit mode"));
+            InvokeUpdate(projectile);
+
+            Assert.That(projectile.BouncesRemaining, Is.EqualTo(0));
+        }
+
+        [Test]
         public void EnemyTakesDamage()
         {
             GameObject enemyObject = new GameObject("Enemy");
@@ -322,12 +407,17 @@ namespace CryptKnight.Tests.EditMode
 
         private static float GetRenderedProjectileDiameter(ProjectileController projectile)
         {
-            Transform visual = projectile.transform.Find("Visual");
-            Assert.That(visual, Is.Not.Null);
-
-            SpriteRenderer renderer = visual.GetComponent<SpriteRenderer>();
+            SpriteRenderer renderer = GetProjectileRenderer(projectile);
+            Transform visual = renderer.transform;
             Vector3 renderedSize = Vector3.Scale(renderer.sprite.bounds.size, visual.localScale);
             return Mathf.Max(renderedSize.x, renderedSize.y);
+        }
+
+        private static SpriteRenderer GetProjectileRenderer(ProjectileController projectile)
+        {
+            Transform visual = projectile.transform.Find("Visual");
+            Assert.That(visual, Is.Not.Null);
+            return visual.GetComponent<SpriteRenderer>();
         }
     }
 }

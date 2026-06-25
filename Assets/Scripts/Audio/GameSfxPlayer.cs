@@ -8,6 +8,8 @@ namespace CryptKnight.Audio
         private const string LifeLostPath = "Audio/SFX/crypt-knight-sfx-life-lost";
         private const string SwordAttackPath = "Audio/SFX/crypt-knight-sfx-subtle-sword-attack";
         private const string ChestOpenPath = "Audio/SFX/crypt-knight-sfx-chest-open";
+        private const string SpiderDeathPath = "Audio/SFX/crypt-knight-sfx-spider-death";
+        private const string ZombieDeathPath = "Audio/SFX/crypt-knight-sfx-zombie-death";
         private const float ItemPowerupPickupVolume = 0.55f;
 
         private static AudioSource audioSource;
@@ -15,6 +17,8 @@ namespace CryptKnight.Audio
         private static AudioClip lifeLostClip;
         private static AudioClip swordAttackClip;
         private static AudioClip chestOpenClip;
+        private static AudioClip spiderDeathClip;
+        private static AudioClip zombieDeathClip;
 
         public static void PlayItemPowerupPickup()
         {
@@ -34,6 +38,16 @@ namespace CryptKnight.Audio
         public static void PlayChestOpen()
         {
             PlayOneShot(ref chestOpenClip, ChestOpenPath);
+        }
+
+        public static void PlaySpiderDeath()
+        {
+            PlayOneShot(ref spiderDeathClip, SpiderDeathPath);
+        }
+
+        public static void PlayZombieDeath()
+        {
+            PlayOneShot(ref zombieDeathClip, ZombieDeathPath);
         }
 
         private static void PlayOneShot(ref AudioClip cachedClip, string resourcePath, float volumeScale = 1f)

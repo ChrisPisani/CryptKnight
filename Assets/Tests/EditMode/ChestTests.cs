@@ -115,8 +115,8 @@ namespace CryptKnight.Tests.EditMode
         {
             Vector2 clampedPosition = InvokeClampToPlayableRoom(new Vector2(100f, 100f));
 
-            Assert.That(clampedPosition.x, Is.InRange(-6f, 6f));
-            Assert.That(clampedPosition.y, Is.InRange(-3f, 3f));
+            Assert.That(clampedPosition.x, Is.EqualTo(8.7f).Within(0.001f));
+            Assert.That(clampedPosition.y, Is.EqualTo(4.5f).Within(0.001f));
         }
 
         [Test]

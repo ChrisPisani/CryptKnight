@@ -19,6 +19,12 @@ namespace CryptKnight.Enemies
             CurrentHealth = maxHealth;
         }
 
+        public void Initialize(int maximumHealth)
+        {
+            maxHealth = Mathf.Max(1, maximumHealth);
+            CurrentHealth = maxHealth;
+        }
+
         public void ApplyDamage(int damage)
         {
             if (damage <= 0 || CurrentHealth <= 0)

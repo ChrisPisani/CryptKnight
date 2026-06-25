@@ -534,7 +534,7 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void PickupDrawsUnderPlayer()
+        public void PickupDrawsAboveEnvironmentAndUnderPlayer()
         {
             LootItemDefinition item = new LootItemDefinition(
                 "test_relic",
@@ -546,6 +546,7 @@ namespace CryptKnight.Tests.EditMode
             LootPickup pickup = CreatePickup(item);
             SpriteRenderer pickupRenderer = pickup.GetComponent<SpriteRenderer>();
 
+            Assert.That(pickupRenderer.sortingOrder, Is.GreaterThan(8));
             Assert.That(pickupRenderer.sortingOrder, Is.LessThan(10));
         }
 

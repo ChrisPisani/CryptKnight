@@ -17,11 +17,10 @@ namespace CryptKnight.Gameplay
 {
     public sealed class GameplaySceneController : MonoBehaviour
     {
-        private const float RoomWidth = 13.5f;
-        private const float RoomHeight = 7.5f;
+        private const float RoomWidth = 18.9f;
+        private const float RoomHeight = 10.5f;
         private const float WallThickness = 0.75f;
         private const float RewardBoundaryPadding = 0.75f;
-        private const int EnemyCountPerEnemyRoom = 1;
         private const string KeyItemId = "key";
         private const float GameMusicFadeDuration = 5f;
         private const float GameMusicVolume = 1f;
@@ -34,8 +33,12 @@ namespace CryptKnight.Gameplay
         private const string DoorArchwayAssetPath = "Assets/Art/Environment/door_archway_environment_half_row.png";
         private const float PlayerVisualScale = 0.85f;
         private const float PlayerColliderRadius = 0.35f;
+        private const int ZombieMaxHealth = 5;
+        private const int SpiderMaxHealth = 3;
+        private const float ZombiePhaseSpreadSeconds = 2.0f;
+        private const float SpiderPhaseSpreadSeconds = 1.5f;
         private static readonly Vector2 PlayerVisualOffset = new Vector2(0f, 0.08f);
-        private static readonly Vector2 DungeonWallFrameWorldSize = new Vector2(16.0f, 9.1f);
+        private static readonly Vector2 DungeonWallFrameWorldSize = new Vector2(22.4f, 12.74f);
         private static readonly Vector2 DoorArchwayNorthOffset = new Vector2(0f, 0.7f);
         private static readonly Vector2 DoorArchwaySouthOffset = new Vector2(0f, -0.7f);
         private static readonly Vector2 DoorArchwayEastOffset = new Vector2(1.0f, 0f);
@@ -46,6 +49,8 @@ namespace CryptKnight.Gameplay
         private static readonly Vector2 DoorFrameWestOffset = new Vector2(-0.88f, 0f);
         private static readonly Vector2 EnemyDropOffset = new Vector2(0f, 0.85f);
         private static readonly Vector2 RoomClearDropOffset = new Vector2(-0.85f, 0.85f);
+        private static readonly Vector2 StarterGiftKeyPosition = new Vector2(-1.15f, 1.15f);
+        private static readonly Vector2 StarterGiftChestPosition = new Vector2(1.15f, 1.15f);
         private static readonly Color DoorColor = new Color(0.55f, 0.40f, 0.18f, 1f);
         private static readonly Color FinalRoomDoorColor = new Color(1f, 0.10f, 0.86f, 1f);
 
@@ -66,6 +71,7 @@ namespace CryptKnight.Gameplay
         private LootTableConfiguration lootConfiguration;
         private LootSystem lootSystem;
         private LootDistributionRules lootRules;
+        private EnemySpawnRules enemySpawnRules;
         private System.Random lootRandom;
         private AudioClip explorationMusicClip;
         private AudioClip bossMusicClip;
@@ -129,6 +135,7 @@ namespace CryptKnight.Gameplay
             lootConfiguration = LootTableConfiguration.CreateDefault();
             lootSystem = new LootSystem(lootConfiguration);
             lootRules = LootDistributionRules.CreateDefault();
+            enemySpawnRules = EnemySpawnRules.CreateDefault();
             lootRandom = new System.Random(runState.Seed ^ 0x4C4F4F54);
             InitializeRoomStates(dungeonLayout, runState.Seed);
 
@@ -158,6 +165,7 @@ namespace CryptKnight.Gameplay
             lootConfiguration = null;
             lootSystem = null;
             lootRules = null;
+            enemySpawnRules = null;
             lootRandom = null;
         }
 
@@ -542,15 +550,18 @@ namespace CryptKnight.Gameplay
         private DungeonRoomRuntimeState CreateRoomState(DungeonRoom room, int runSeed)
         {
             EnsureLootServices();
+            EnsureEnemyServices();
             DungeonRoomRuntimeState state = new DungeonRoomRuntimeState(room.GridPosition, room.RoomType);
-            if (room.RoomType == RoomType.Enemy)
+            IReadOnlyList<RoomEnemySpawn> enemySpawns = enemySpawnRules.CreateSpawns(room.RoomType, runSeed, room.GridPosition);
+            for (int i = 0; i < enemySpawns.Count; i++)
             {
-                state.SetEnemyCount(EnemyCountPerEnemyRoom);
+                RoomEnemySpawn spawn = enemySpawns[i];
+                state.AddEnemy(spawn.Kind, spawn.Position);
             }
 
             if (room.RoomType == RoomType.Starter)
             {
-                AddStarterLootToRoomState(state);
+                AddStarterGiftToRoomState(state);
             }
 
             if (lootRules.ShouldPlaceChest(room.RoomType, runSeed, room.GridPosition))
@@ -611,27 +622,92 @@ namespace CryptKnight.Gameplay
             return null;
         }
 
-        private void CreateTestEnemy(Transform parent, Transform player, DungeonRoomRuntimeState roomState)
+        private void CreateRoomEnemies(Transform parent, DungeonRoomRuntimeState roomState)
         {
-            GameObject enemy = CreateSpriteObject("Test Enemy", parent, new Vector2(4f, 0f), new Vector2(0.8f, 0.8f), new Color(0.72f, 0.18f, 0.22f, 1f));
-            enemy.GetComponent<SpriteRenderer>().sortingOrder = 9;
-            enemy.AddComponent<CircleCollider2D>().radius = 0.45f;
+            for (int i = 0; i < roomState.Enemies.Count; i++)
+            {
+                RoomEnemyInstance enemyInstance = roomState.Enemies[i];
+                if (!enemyInstance.IsDefeated)
+                {
+                    CreateEnemy(parent, roomState, enemyInstance);
+                }
+            }
+        }
+
+        private void CreateEnemy(Transform parent, DungeonRoomRuntimeState roomState, RoomEnemyInstance enemyInstance)
+        {
+            GameObject enemy = new GameObject($"{enemyInstance.Kind} Enemy");
+            enemy.transform.SetParent(parent, false);
+            enemy.transform.position = enemyInstance.Position;
+
+            Rigidbody2D body = enemy.AddComponent<Rigidbody2D>();
+            body.bodyType = RigidbodyType2D.Kinematic;
+            body.gravityScale = 0f;
+            body.freezeRotation = true;
+            body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            body.interpolation = RigidbodyInterpolation2D.Interpolate;
+
+            CircleCollider2D collider = enemy.AddComponent<CircleCollider2D>();
+            collider.radius = enemyInstance.Kind == EnemyKind.Spider ? 0.55f : 0.42f;
+
+            GameObject visual = new GameObject("Visual");
+            visual.transform.SetParent(enemy.transform, false);
+            visual.transform.localScale = enemyInstance.Kind == EnemyKind.Spider
+                ? new Vector3(0.70f, 0.70f, 1f)
+                : new Vector3(1.60f, 1.60f, 1f);
+            SpriteRenderer renderer = visual.AddComponent<SpriteRenderer>();
+            renderer.sortingOrder = 9;
+            EnemySpriteAnimator animator = visual.AddComponent<EnemySpriteAnimator>();
+            animator.Initialize(enemyInstance.Kind);
+
             EnemyHealth enemyHealth = enemy.AddComponent<EnemyHealth>();
-            enemyHealth.Died += defeatedEnemy => HandleEnemyDefeated(roomState, defeatedEnemy.transform.position);
-            enemy.AddComponent<TestEnemyShooter>().Initialize(player);
+            enemyHealth.Initialize(GetEnemyMaxHealth(enemyInstance.Kind));
+            enemyHealth.Died += defeatedEnemy =>
+            {
+                PlayEnemyDeathSound(enemyInstance.Kind);
+                HandleEnemyDefeated(roomState, enemyInstance.Id, defeatedEnemy.transform.position);
+            };
+
+            Rect playableBounds = GetPlayableRoomBounds();
+            float phaseOffset = GetEnemyPhaseOffset(enemyInstance.Id, enemyInstance.Kind);
+            if (enemyInstance.Kind == EnemyKind.Spider)
+            {
+                enemy.AddComponent<SpiderEnemyAI>().Initialize(playerTransform, parent, playableBounds, phaseOffset);
+                return;
+            }
+
+            enemy.AddComponent<ZombieEnemyAI>().Initialize(playerTransform, parent, playableBounds, phaseOffset);
+        }
+
+        private static int GetEnemyMaxHealth(EnemyKind enemyKind)
+        {
+            return enemyKind == EnemyKind.Zombie ? ZombieMaxHealth : SpiderMaxHealth;
+        }
+
+        private static float GetEnemyPhaseOffset(int enemyId, EnemyKind enemyKind)
+        {
+            float maxOffset = enemyKind == EnemyKind.Spider ? SpiderPhaseSpreadSeconds : ZombiePhaseSpreadSeconds;
+            int hash = Mathf.Abs(enemyId * 73856093);
+            return (hash % 1000) / 1000f * maxOffset;
+        }
+
+        private static void PlayEnemyDeathSound(EnemyKind enemyKind)
+        {
+            switch (enemyKind)
+            {
+                case EnemyKind.Spider:
+                    GameSfxPlayer.PlaySpiderDeath();
+                    break;
+                case EnemyKind.Zombie:
+                    GameSfxPlayer.PlayZombieDeath();
+                    break;
+            }
         }
 
         private void CreateRoomContents(Transform parent, DungeonRoom room, DungeonRoomRuntimeState roomState)
         {
             switch (room.RoomType)
             {
-                case RoomType.Enemy:
-                    if (roomState.RemainingEnemies > 0)
-                    {
-                        CreateTestEnemy(parent, playerTransform, roomState);
-                    }
-
-                    break;
                 case RoomType.Trap:
                     CreateTrapMarker(parent);
                     break;
@@ -640,6 +716,7 @@ namespace CryptKnight.Gameplay
                     break;
             }
 
+            CreateRoomEnemies(parent, roomState);
             CreateRoomChests(parent, roomState);
             CreateRoomLoot(parent, roomState);
         }
@@ -657,17 +734,15 @@ namespace CryptKnight.Gameplay
             finalMarker.GetComponent<SpriteRenderer>().sortingOrder = 3;
         }
 
-        private void AddStarterLootToRoomState(DungeonRoomRuntimeState roomState)
+        private void AddStarterGiftToRoomState(DungeonRoomRuntimeState roomState)
         {
-            EnsureLootServices();
-            LootTableConfiguration lootTable = lootConfiguration;
-            Vector2[] spawnPositions = GetStarterLootPositions();
-
-            int pickupCount = Mathf.Min(lootTable.Items.Count, spawnPositions.Length);
-            for (int i = 0; i < pickupCount; i++)
+            LootItemDefinition keyItem = GetKeyItemDefinition();
+            if (keyItem != null)
             {
-                roomState.AddLoot(lootTable.Items[i], spawnPositions[i]);
+                roomState.AddLoot(keyItem, StarterGiftKeyPosition);
             }
+
+            roomState.AddChest(StarterGiftChestPosition);
         }
 
         private void CreateRoomChests(Transform parent, DungeonRoomRuntimeState roomState)
@@ -724,14 +799,14 @@ namespace CryptKnight.Gameplay
             return pickup;
         }
 
-        private void HandleEnemyDefeated(DungeonRoomRuntimeState roomState, Vector2 enemyPosition)
+        private void HandleEnemyDefeated(DungeonRoomRuntimeState roomState, int enemyId, Vector2 enemyPosition)
         {
             if (roomState == null)
             {
                 return;
             }
 
-            bool roomCleared = roomState.DefeatEnemy();
+            bool roomCleared = roomState.MarkEnemyDefeated(enemyId);
             // Enemy and room-clear rewards are intentionally separate rolls, so the last enemy can drop both.
             RollAndAddLoot(roomState, LootSourceType.Enemy, enemyPosition + EnemyDropOffset, enemyPosition);
             if (roomCleared)
@@ -792,16 +867,12 @@ namespace CryptKnight.Gameplay
             }
         }
 
-        private static Vector2[] GetStarterLootPositions()
+        private void EnsureEnemyServices()
         {
-            return new[]
+            if (enemySpawnRules == null)
             {
-                new Vector2(-5.0f, 2.45f),
-                new Vector2(-3.1f, 1.45f),
-                new Vector2(-1.2f, 2.45f),
-                new Vector2(2.1f, 2.45f),
-                new Vector2(4.2f, 1.45f)
-            };
+                enemySpawnRules = EnemySpawnRules.CreateDefault();
+            }
         }
 
         private static Vector2 ClampToPlayableRoom(Vector2 position)
@@ -1049,7 +1120,7 @@ namespace CryptKnight.Gameplay
 
             camera.transform.position = new Vector3(0f, 0f, -10f);
             camera.orthographic = true;
-            camera.orthographicSize = 4.7f;
+            camera.orthographicSize = 6.6f;
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = Color.black;
         }
