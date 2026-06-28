@@ -1,5 +1,8 @@
+using System.Collections.Generic;
 using CryptKnight.Application;
+using CryptKnight.Combat;
 using CryptKnight.Data;
+using CryptKnight.Dungeon;
 using CryptKnight.Enemies;
 using CryptKnight.Loot;
 using CryptKnight.Player;
@@ -12,11 +15,16 @@ namespace CryptKnight.Gameplay
         private const float RoomWidth = 13.5f;
         private const float RoomHeight = 7.5f;
         private const float WallThickness = 0.75f;
+        private static readonly Color DoorColor = new Color(0.55f, 0.40f, 0.18f, 1f);
+        private static readonly Color FinalRoomDoorColor = new Color(1f, 0.10f, 0.86f, 1f);
 
         private static GameplaySceneController instance;
         private static Sprite squareSprite;
 
         private GameObject gameplayRoot;
+        private GameObject roomRoot;
+        private DungeonRoomNavigator roomNavigator;
+        private Transform playerTransform;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void CreateController()
@@ -63,13 +71,15 @@ namespace CryptKnight.Gameplay
         {
             ClearGameplayScene();
 
-            // This is a temporary room scene, will be replaced by dungeon and room generation later
+            GameRunState runState = GameManager.Instance.CurrentRun;
+            DungeonLayout dungeonLayout = DungeonLayoutGenerator.Generate(runState.DungeonWidth, runState.DungeonHeight, runState.Seed);
+            roomNavigator = new DungeonRoomNavigator(dungeonLayout);
+
             gameplayRoot = new GameObject("Runtime Gameplay Scene");
-            CreateRoomFloor(gameplayRoot.transform);
-            CreateRoomWalls(gameplayRoot.transform);
-            Transform player = CreatePlayer(gameplayRoot.transform);
-            CreateTestEnemy(gameplayRoot.transform, player);
-            CreateTestLootPickups(gameplayRoot.transform);
+            roomRoot = new GameObject("Active Room");
+            roomRoot.transform.SetParent(gameplayRoot.transform, false);
+            playerTransform = CreatePlayer(gameplayRoot.transform);
+            BuildCurrentRoom(Vector2.zero);
             FrameCamera();
         }
 
@@ -82,6 +92,60 @@ namespace CryptKnight.Gameplay
 
             Destroy(gameplayRoot);
             gameplayRoot = null;
+            roomRoot = null;
+            roomNavigator = null;
+            playerTransform = null;
+        }
+
+        public void TravelThroughDoor(RoomDirection direction)
+        {
+            if (roomNavigator == null || !roomNavigator.TryMove(direction))
+            {
+                return;
+            }
+
+            BuildCurrentRoom(GetSpawnPositionForEntry(direction));
+        }
+
+        private void BuildCurrentRoom(Vector2 playerSpawnPosition)
+        {
+            ClearRoomInstance();
+            CreateRoomFloor(roomRoot.transform);
+            CreateRoomWalls(roomRoot.transform);
+            CreateDoors(roomRoot.transform, roomNavigator.CurrentRoom);
+            CreateRoomContents(roomRoot.transform, roomNavigator.CurrentRoom);
+
+            if (playerTransform != null)
+            {
+                playerTransform.position = playerSpawnPosition;
+            }
+        }
+
+        private void ClearRoomInstance()
+        {
+            if (roomRoot == null)
+            {
+                return;
+            }
+
+            ClearActiveProjectiles();
+
+            for (int i = roomRoot.transform.childCount - 1; i >= 0; i--)
+            {
+                GameObject child = roomRoot.transform.GetChild(i).gameObject;
+                child.SetActive(false);
+                Destroy(child);
+            }
+        }
+
+        private static void ClearActiveProjectiles()
+        {
+            ProjectileController[] projectiles = FindObjectsByType<ProjectileController>(FindObjectsInactive.Exclude);
+            for (int i = 0; i < projectiles.Length; i++)
+            {
+                projectiles[i].gameObject.SetActive(false);
+                Destroy(projectiles[i].gameObject);
+            }
         }
 
         private void CreateRoomFloor(Transform parent)
@@ -110,6 +174,27 @@ namespace CryptKnight.Gameplay
             wall.AddComponent<BoxCollider2D>();
         }
 
+        private void CreateDoors(Transform parent, DungeonRoom room)
+        {
+            foreach (KeyValuePair<RoomDirection, Vector2Int> connection in room.Connections)
+            {
+                bool leadsToFinalRoom = roomNavigator != null && roomNavigator.Layout.FinalPosition == connection.Value;
+                CreateDoor(parent, connection.Key, leadsToFinalRoom);
+            }
+        }
+
+        private void CreateDoor(Transform parent, RoomDirection direction, bool leadsToFinalRoom)
+        {
+            Vector2 position = GetDoorPosition(direction);
+            Vector2 size = IsHorizontalDoor(direction) ? new Vector2(1.6f, 0.5f) : new Vector2(0.5f, 1.6f);
+            GameObject door = CreateSpriteObject($"Door {direction}", parent, position, size, leadsToFinalRoom ? FinalRoomDoorColor : DoorColor);
+            door.GetComponent<SpriteRenderer>().sortingOrder = 2;
+
+            BoxCollider2D trigger = door.AddComponent<BoxCollider2D>();
+            trigger.isTrigger = true;
+            door.AddComponent<RoomDoorTrigger>().Initialize(this, direction);
+        }
+
         private Transform CreatePlayer(Transform parent)
         {
             GameObject player = new GameObject("Player");
@@ -136,6 +221,38 @@ namespace CryptKnight.Gameplay
             enemy.AddComponent<CircleCollider2D>().radius = 0.45f;
             enemy.AddComponent<EnemyHealth>();
             enemy.AddComponent<TestEnemyShooter>().Initialize(player);
+        }
+
+        private void CreateRoomContents(Transform parent, DungeonRoom room)
+        {
+            switch (room.RoomType)
+            {
+                case RoomType.Enemy:
+                    CreateTestEnemy(parent, playerTransform);
+                    break;
+                case RoomType.Trap:
+                    CreateTrapMarker(parent);
+                    break;
+                case RoomType.Final:
+                    CreateFinalRoomMarker(parent);
+                    break;
+                case RoomType.Starter:
+                    CreateTestLootPickups(parent);
+                    break;
+            }
+        }
+
+        private void CreateTrapMarker(Transform parent)
+        {
+            GameObject trap = CreateSpriteObject("Trap Room Marker", parent, Vector2.zero, new Vector2(2.0f, 0.35f), new Color(0.85f, 0.12f, 0.08f, 1f));
+            trap.GetComponent<SpriteRenderer>().sortingOrder = 3;
+            trap.AddComponent<BoxCollider2D>().isTrigger = true;
+        }
+
+        private void CreateFinalRoomMarker(Transform parent)
+        {
+            GameObject finalMarker = CreateSpriteObject("Final Room Marker", parent, Vector2.zero, new Vector2(1.4f, 1.4f), new Color(0.95f, 0.76f, 0.20f, 1f));
+            finalMarker.GetComponent<SpriteRenderer>().sortingOrder = 3;
         }
 
         private void CreateTestLootPickups(Transform parent)
@@ -212,6 +329,49 @@ namespace CryptKnight.Gameplay
             camera.orthographicSize = 4.7f;
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = new Color(0.04f, 0.045f, 0.05f, 1f);
+        }
+
+        private static Vector2 GetDoorPosition(RoomDirection direction)
+        {
+            float halfWidth = RoomWidth * 0.5f;
+            float halfHeight = RoomHeight * 0.5f;
+            switch (direction)
+            {
+                case RoomDirection.North:
+                    return new Vector2(0f, halfHeight - 0.35f);
+                case RoomDirection.East:
+                    return new Vector2(halfWidth - 0.35f, 0f);
+                case RoomDirection.South:
+                    return new Vector2(0f, -halfHeight + 0.35f);
+                case RoomDirection.West:
+                    return new Vector2(-halfWidth + 0.35f, 0f);
+                default:
+                    return Vector2.zero;
+            }
+        }
+
+        private static Vector2 GetSpawnPositionForEntry(RoomDirection exitDirection)
+        {
+            float halfWidth = RoomWidth * 0.5f;
+            float halfHeight = RoomHeight * 0.5f;
+            switch (exitDirection)
+            {
+                case RoomDirection.North:
+                    return new Vector2(0f, -halfHeight + 1.2f);
+                case RoomDirection.East:
+                    return new Vector2(-halfWidth + 1.2f, 0f);
+                case RoomDirection.South:
+                    return new Vector2(0f, halfHeight - 1.2f);
+                case RoomDirection.West:
+                    return new Vector2(halfWidth - 1.2f, 0f);
+                default:
+                    return Vector2.zero;
+            }
+        }
+
+        private static bool IsHorizontalDoor(RoomDirection direction)
+        {
+            return direction == RoomDirection.North || direction == RoomDirection.South;
         }
 
     }
