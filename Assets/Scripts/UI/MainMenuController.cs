@@ -1,13 +1,11 @@
 using System.Collections;
 using CryptKnight.Application;
 using CryptKnight.Audio;
+using CryptKnight.Content;
 using CryptKnight.Data;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.UI;
@@ -18,20 +16,19 @@ namespace CryptKnight.UI
     public sealed class MainMenuController : MonoBehaviour
     {
         private const string DemoVersion = "v0.9.0";
-        private const string MainMenuBackgroundPath = "Assets/Art/UI/main_menu_background.png";
-        private const string MainMenuBackgroundResourcePath = "UI/main_menu_background";
-        private const string MainMenuButtonSheetPath = "Assets/Art/UI/crypt-knight-buttons-transparent-full-sheet.png";
+        private const string MainMenuBackgroundPath = "Art/UI/main_menu_background";
+        private const string MainMenuButtonSheetPath = "Art/UI/crypt-knight-buttons-transparent-full-sheet";
         private const string LaunchStingerResourcePath = "Audio/Menu/crypt-knight-launch-stinger";
         private const string MainMenuLoopResourcePath = "Audio/Menu/crypt-knight-main-menu-loop";
-        private const string BloodlinesUIFontPath = "Assets/Art/UI/Bloodlines/Fonts/MedievalSharp-Regular.ttf";
-        private const string BloodlinesPanelSpritePath = "Assets/Art/UI/Bloodlines/Frames/Frame_main_menu_red.png";
-        private const string BloodlinesButtonDefaultPath = "Assets/Art/UI/Bloodlines/Buttons/Status_Red_Default.png";
-        private const string BloodlinesButtonHoverPath = "Assets/Art/UI/Bloodlines/Buttons/Status_Red_Hover.png";
-        private const string BloodlinesButtonPressedPath = "Assets/Art/UI/Bloodlines/Buttons/Status_Pressed.png";
-        private const string BloodlinesButtonDisabledPath = "Assets/Art/UI/Bloodlines/Buttons/Status_Disable.png";
-        private const string BloodlinesSliderEmptyPath = "Assets/Art/UI/Bloodlines/Sliders/Slider_empty.png";
-        private const string BloodlinesSliderFullPath = "Assets/Art/UI/Bloodlines/Sliders/Slider_full_v1.png";
-        private const string BloodlinesSliderHandlePath = "Assets/Art/UI/Bloodlines/Sliders/Slider_toggler.png";
+        private const string BloodlinesUIFontPath = "Art/UI/Bloodlines/Fonts/MedievalSharp-Regular";
+        private const string BloodlinesPanelSpritePath = "Art/UI/Bloodlines/Frames/Frame_main_menu_red";
+        private const string BloodlinesButtonDefaultPath = "Art/UI/Bloodlines/Buttons/Status_Red_Default";
+        private const string BloodlinesButtonHoverPath = "Art/UI/Bloodlines/Buttons/Status_Red_Hover";
+        private const string BloodlinesButtonPressedPath = "Art/UI/Bloodlines/Buttons/Status_Pressed";
+        private const string BloodlinesButtonDisabledPath = "Art/UI/Bloodlines/Buttons/Status_Disable";
+        private const string BloodlinesSliderEmptyPath = "Art/UI/Bloodlines/Sliders/Slider_empty";
+        private const string BloodlinesSliderFullPath = "Art/UI/Bloodlines/Sliders/Slider_full_v1";
+        private const string BloodlinesSliderHandlePath = "Art/UI/Bloodlines/Sliders/Slider_toggler";
         private const float MainMenuLoopFadeSeconds = .6f;
         private const float MainMenuIntroToLoopFadeSeconds = 1.5f;
 
@@ -169,6 +166,12 @@ namespace CryptKnight.UI
 
             RunPauseMenuController pauseMenuController = gameObject.AddComponent<RunPauseMenuController>();
             pauseMenuController.Initialize(canvas.transform, defaultFont);
+
+            FinalWaveDisplayController waveDisplay = gameObject.AddComponent<FinalWaveDisplayController>();
+            waveDisplay.Initialize(canvas.transform, defaultFont);
+
+            RunResultOverlayController resultOverlay = gameObject.AddComponent<RunResultOverlayController>();
+            resultOverlay.Initialize(canvas.transform, defaultFont, ShowMenuAfterRunResult);
         }
 
         private void ConfigureMenuMusic()
@@ -418,58 +421,18 @@ namespace CryptKnight.UI
 
         private static Sprite LoadMenuBackgroundSprite()
         {
-#if UNITY_EDITOR
-            Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(MainMenuBackgroundPath);
-            if (sprite != null)
-            {
-                return sprite;
-            }
-
-            Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(MainMenuBackgroundPath);
-            if (texture != null)
-            {
-                return Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height), new Vector2(0.5f, 0.5f), 100f);
-            }
-#else
-            Sprite sprite = Resources.Load<Sprite>(MainMenuBackgroundResourcePath);
-            if (sprite != null)
-            {
-                return sprite;
-            }
-#endif
-
-            return null;
+            return RuntimeAssetLoader.LoadSprite(MainMenuBackgroundPath, "main_menu_background_0")
+                ?? RuntimeAssetLoader.LoadSprite(MainMenuBackgroundPath);
         }
 
         private static Font LoadBloodlinesFont()
         {
-#if UNITY_EDITOR
-            return AssetDatabase.LoadAssetAtPath<Font>(BloodlinesUIFontPath);
-#else
-            return null;
-#endif
+            return RuntimeAssetLoader.LoadFont(BloodlinesUIFontPath);
         }
 
         private static Sprite LoadBloodlinesSprite(string assetPath)
         {
-#if UNITY_EDITOR
-            Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
-            if (sprite != null)
-            {
-                return sprite;
-            }
-
-            UnityEngine.Object[] assets = AssetDatabase.LoadAllAssetsAtPath(assetPath);
-            for (int i = 0; i < assets.Length; i++)
-            {
-                if (assets[i] is Sprite childSprite)
-                {
-                    return childSprite;
-                }
-            }
-#endif
-
-            return null;
+            return RuntimeAssetLoader.LoadSprite(assetPath);
         }
 
         private static Sprite GetBloodlinesPanelSprite()
@@ -730,18 +693,7 @@ namespace CryptKnight.UI
 
         private static Sprite LoadMenuButtonSprite(string spriteName)
         {
-#if UNITY_EDITOR
-            UnityEngine.Object[] assets = AssetDatabase.LoadAllAssetsAtPath(MainMenuButtonSheetPath);
-            for (int i = 0; i < assets.Length; i++)
-            {
-                if (assets[i] is Sprite sprite && sprite.name == spriteName)
-                {
-                    return sprite;
-                }
-            }
-#endif
-
-            return null;
+            return RuntimeAssetLoader.LoadSprite(MainMenuButtonSheetPath, spriteName);
         }
 
         private static bool TryStyleBloodlinesButton(Image image, Button button)
@@ -1213,12 +1165,24 @@ namespace CryptKnight.UI
         private void HandleRunStateChanged(GameRunState runState)
         {
             bool hasActiveRun = runState != null && runState.IsActive;
-            menuScreen.SetActive(!hasActiveRun);
+            bool hasRunResult = runState != null &&
+                (runState.Status == GameRunStatus.Completed || runState.Status == GameRunStatus.Failed);
+            menuScreen.SetActive(!hasActiveRun && !hasRunResult);
             runPanel.SetActive(false);
 
             if (hasActiveRun)
             {
                 wasRunActive = true;
+                StopMenuMusic();
+            }
+            else if (hasRunResult)
+            {
+                if (wasRunActive)
+                {
+                    launchStingerPlayed = false;
+                    wasRunActive = false;
+                }
+
                 StopMenuMusic();
             }
             else
@@ -1250,6 +1214,12 @@ namespace CryptKnight.UI
             runInfoText.text = string.Empty;
         }
 
+        private void ShowMenuAfterRunResult()
+        {
+            menuScreen.SetActive(true);
+            PlayMenuMusic();
+        }
+
         private void CreateVersionLabel(Transform parent)
         {
             Text versionText = CreateText(parent, "Demo Version", DemoVersion, 14, FontStyle.Normal, TextAnchor.LowerRight, MutedTextColor, Vector2.zero, new Vector2(240f, 32f));
@@ -1276,7 +1246,7 @@ namespace CryptKnight.UI
 
         private static void EnsureEventSystem()
         {
-            if (Object.FindFirstObjectByType<EventSystem>() != null)
+            if (Object.FindAnyObjectByType<EventSystem>() != null)
             {
                 return;
             }

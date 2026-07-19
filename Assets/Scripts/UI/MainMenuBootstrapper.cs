@@ -11,7 +11,7 @@ namespace CryptKnight.UI
             // The current prototype builds UI at runtime so the default Unity scene can stay minimal
             _ = GameManager.Instance;
 
-            if (Object.FindFirstObjectByType<MainMenuController>() != null)
+            if (Object.FindAnyObjectByType<MainMenuController>() != null)
             {
                 return;
             }

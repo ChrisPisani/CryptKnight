@@ -1,9 +1,7 @@
 using System.Collections.Generic;
+using CryptKnight.Content;
 using CryptKnight.Player;
 using UnityEngine;
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 
 namespace CryptKnight.Enemies
 {
@@ -335,19 +333,15 @@ namespace CryptKnight.Enemies
         private static Dictionary<string, Sprite> LoadFrames(EnemyKind kind)
         {
             Dictionary<string, Sprite> framesByName = new Dictionary<string, Sprite>();
-#if UNITY_EDITOR
             string path = kind == EnemyKind.Zombie
-                ? "Assets/Art/Enemies/zombie_enemy_combined_4x8.png"
-                : "Assets/Art/Enemies/spider_enemy_all_rows_4x8_transparent.png";
-            UnityEngine.Object[] assets = AssetDatabase.LoadAllAssetsAtPath(path);
+                ? "Art/Enemies/zombie_enemy_combined_4x8"
+                : "Art/Enemies/spider_enemy_all_rows_4x8_transparent";
+            Sprite[] assets = RuntimeAssetLoader.LoadSprites(path);
             for (int i = 0; i < assets.Length; i++)
             {
-                if (assets[i] is Sprite sprite)
-                {
-                    framesByName[sprite.name] = sprite;
-                }
+                Sprite sprite = assets[i];
+                framesByName[sprite.name] = sprite;
             }
-#endif
             return framesByName;
         }
     }

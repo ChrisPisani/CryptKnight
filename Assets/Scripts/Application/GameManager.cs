@@ -1,6 +1,7 @@
 using System;
 using CryptKnight.Audio;
 using CryptKnight.Data;
+using CryptKnight.Dungeon;
 using CryptKnight.Loot;
 using UnityEngine;
 
@@ -43,7 +44,10 @@ namespace CryptKnight.Application
             }
 
             instance = this;
-            DontDestroyOnLoad(gameObject);
+            if (UnityEngine.Application.isPlaying)
+            {
+                DontDestroyOnLoad(gameObject);
+            }
         }
 
         public GameRunState StartNewRun()
@@ -58,6 +62,7 @@ namespace CryptKnight.Application
                 DungeonWidth,
                 DungeonHeight,
                 PlayerBaseStats.CreateDefault());
+            CurrentRun.InitializeDungeon(DungeonRunStateFactory.Create(DungeonWidth, DungeonHeight, seed));
 
             Debug.Log($"Started Crypt Knight run {CurrentRun.RunNumber} with seed {CurrentRun.Seed}.");
             RunStateChanged?.Invoke(CurrentRun);
@@ -72,9 +77,18 @@ namespace CryptKnight.Application
             }
 
             CurrentRun.QuitRun();
-            SetGameplayPaused(false);
-            Debug.Log($"Quit Crypt Knight run {CurrentRun.RunNumber}.");
-            RunStateChanged?.Invoke(CurrentRun);
+            FinishRun("Quit");
+        }
+
+        public void CompleteCurrentRun()
+        {
+            if (CurrentRun == null || !CurrentRun.IsActive)
+            {
+                return;
+            }
+
+            CurrentRun.CompleteRun();
+            FinishRun("Completed");
         }
 
         public void SetGameplayPaused(bool isPaused)
@@ -84,14 +98,20 @@ namespace CryptKnight.Application
 
         public void DamagePlayer(int halfHeartDamage)
         {
-            if (CurrentRun == null)
+            if (CurrentRun == null || !CurrentRun.IsActive)
             {
                 return;
             }
 
             int previousHealth = CurrentRun.CurrentHealth;
             CurrentRun.ApplyDamage(halfHeartDamage);
-            // Only play feedback if health actually changed
+            if (!CurrentRun.IsActive)
+            {
+                FinishRun("Failed");
+                return;
+            }
+
+            // Lethal damage uses the defeat cue instead of stacking both sounds.
             if (CurrentRun.CurrentHealth < previousHealth)
             {
                 GameSfxPlayer.PlayLifeLost();
@@ -169,6 +189,22 @@ namespace CryptKnight.Application
             }
 
             CurrentRun.AddStatModifier(modifier);
+            RunStateChanged?.Invoke(CurrentRun);
+        }
+
+        private void FinishRun(string outcome)
+        {
+            SetGameplayPaused(false);
+            if (CurrentRun.Status == GameRunStatus.Completed)
+            {
+                GameSfxPlayer.PlayVictory();
+            }
+            else if (CurrentRun.Status == GameRunStatus.Failed)
+            {
+                GameSfxPlayer.PlayDefeat();
+            }
+
+            Debug.Log($"{outcome} Crypt Knight run {CurrentRun.RunNumber}.");
             RunStateChanged?.Invoke(CurrentRun);
         }
     }

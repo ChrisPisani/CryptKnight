@@ -1,11 +1,9 @@
 using System;
 using CryptKnight.Application;
 using CryptKnight.Audio;
+using CryptKnight.Content;
 using CryptKnight.Player;
 using UnityEngine;
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
@@ -25,7 +23,7 @@ namespace CryptKnight.Loot
         private const int ChestSortingOrder = 5;
         private const int PromptSortingOrder = 31;
         private const string KeyItemId = "key";
-        private const string ChestSpriteSheetPath = "Assets/Art/Items/treasure_chest_opening_strip_alpha.png";
+        private const string ChestSpriteSheetPath = "Art/Items/treasure_chest_opening_strip_alpha";
         private static readonly Color ClosedColor = new Color(0.48f, 0.27f, 0.08f, 1f);
         private static readonly Color OpenColor = new Color(0.25f, 0.18f, 0.12f, 1f);
         private static readonly Color PromptTextColor = new Color(0.98f, 0.96f, 0.88f, 1f);
@@ -297,12 +295,12 @@ namespace CryptKnight.Loot
                 return chestFrames;
             }
 
-#if UNITY_EDITOR
-            UnityEngine.Object[] assets = AssetDatabase.LoadAllAssetsAtPath(ChestSpriteSheetPath);
+            Sprite[] assets = RuntimeAssetLoader.LoadSprites(ChestSpriteSheetPath);
             System.Collections.Generic.List<Sprite> frames = new System.Collections.Generic.List<Sprite>();
             for (int i = 0; i < assets.Length; i++)
             {
-                if (assets[i] is Sprite sprite && sprite.name.StartsWith("treasure_chest_opening_", StringComparison.Ordinal))
+                Sprite sprite = assets[i];
+                if (sprite.name.StartsWith("treasure_chest_opening_", StringComparison.Ordinal))
                 {
                     frames.Add(sprite);
                 }
@@ -310,9 +308,6 @@ namespace CryptKnight.Loot
 
             frames.Sort((left, right) => string.CompareOrdinal(left.name, right.name));
             chestFrames = frames.ToArray();
-#else
-            chestFrames = Array.Empty<Sprite>();
-#endif
             return chestFrames;
         }
 

@@ -10,7 +10,7 @@
       "itemId": "heart_container",
       "displayName": "Monster Heart",
       "description": "Gain 1 max heart.",
-      "iconAssetPath": "Assets/Art/Items/heart_container.png",
+      "iconAssetPath": "Art/Items/heart_container",
       "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
       "statModifier": { "maxHealthBonus": 2, "damageBonus": 0, "movementSpeedBonus": 0.0, "attackRateBonus": 0.0 }
     },
@@ -18,7 +18,7 @@
       "itemId": "damage_up",
       "displayName": "Spinach",
       "description": "Increase attack damage by 1.",
-      "iconAssetPath": "Assets/Art/Items/damage_up.png",
+      "iconAssetPath": "Art/Items/damage_up",
       "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
       "statModifier": { "maxHealthBonus": 0, "damageBonus": 1, "movementSpeedBonus": 0.0, "attackRateBonus": 0.0 }
     },
@@ -26,7 +26,7 @@
       "itemId": "speed_up",
       "displayName": "Bottled Lightning",
       "description": "Increase movement speed by 1.",
-      "iconAssetPath": "Assets/Art/Items/speed_up.png",
+      "iconAssetPath": "Art/Items/speed_up",
       "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
       "statModifier": { "maxHealthBonus": 0, "damageBonus": 0, "movementSpeedBonus": 1.0, "attackRateBonus": 0.0 }
     },
@@ -34,7 +34,7 @@
       "itemId": "attack_rate_up",
       "displayName": "Chili Pepper",
       "description": "Increase attack rate by 0.2 shots per second.",
-      "iconAssetPath": "Assets/Art/Items/attack_rate_up.png",
+      "iconAssetPath": "Art/Items/attack_rate_up",
       "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
       "statModifier": { "maxHealthBonus": 0, "damageBonus": 0, "movementSpeedBonus": 0.0, "attackRateBonus": 0.2 }
     },
@@ -42,7 +42,7 @@
       "itemId": "key",
       "displayName": "Key",
       "description": "Gain 1 key.",
-      "iconAssetPath": "Assets/Art/Items/key.png",
+      "iconAssetPath": "Art/Items/key",
       "keyAmount": 1,
       "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
       "statModifier": { "maxHealthBonus": 0, "damageBonus": 0, "movementSpeedBonus": 0.0, "attackRateBonus": 0.0 }

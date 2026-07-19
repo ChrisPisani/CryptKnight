@@ -1,12 +1,10 @@
 using System.Collections.Generic;
 using CryptKnight.Application;
+using CryptKnight.Content;
 using CryptKnight.Data;
 using CryptKnight.Loot;
 using UnityEngine;
 using UnityEngine.UI;
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 
 namespace CryptKnight.UI
 {
@@ -207,13 +205,13 @@ namespace CryptKnight.UI
 
         private void LoadHudSprites()
         {
-            fullHeartSprite = LoadSpriteAtPath("Assets/Art/UI/heartDisplay.png", "heartDisplay_0");
-            emptyHeartSprite = LoadSpriteAtPath("Assets/Art/UI/heartDisplay.png", "heartDisplay_1");
-            halfHeartSprite = LoadSpriteAtPath("Assets/Art/UI/heartDisplay.png", "heartDisplay_2");
-            keySprite = LoadSpriteAtPath("Assets/Art/Items/key.png", "key_0");
+            fullHeartSprite = RuntimeAssetLoader.LoadSprite("Art/UI/heartDisplay", "heartDisplay_0");
+            emptyHeartSprite = RuntimeAssetLoader.LoadSprite("Art/UI/heartDisplay", "heartDisplay_1");
+            halfHeartSprite = RuntimeAssetLoader.LoadSprite("Art/UI/heartDisplay", "heartDisplay_2");
+            keySprite = RuntimeAssetLoader.LoadSprite("Art/Items/key", "key_0");
             if (keySprite == null)
             {
-                keySprite = LoadSpriteAtPath("Assets/Art/Items/key.png", "key");
+                keySprite = RuntimeAssetLoader.LoadSprite("Art/Items/key", "key");
             }
 
             if (fullHeartSprite == null)
@@ -235,21 +233,6 @@ namespace CryptKnight.UI
             {
                 keySprite = CreateFallbackSprite(new Color(0.95f, 0.74f, 0.18f, 1f));
             }
-        }
-
-        private static Sprite LoadSpriteAtPath(string assetPath, string spriteName)
-        {
-#if UNITY_EDITOR
-            UnityEngine.Object[] assets = AssetDatabase.LoadAllAssetsAtPath(assetPath);
-            for (int i = 0; i < assets.Length; i++)
-            {
-                if (assets[i] is Sprite sprite && sprite.name == spriteName)
-                {
-                    return sprite;
-                }
-            }
-#endif
-            return null;
         }
 
         private static Sprite CreateFallbackSprite(Color color)

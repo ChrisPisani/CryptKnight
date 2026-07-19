@@ -1,16 +1,14 @@
 using System;
 using System.Collections.Generic;
+using CryptKnight.Content;
 using UnityEngine;
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 
 namespace CryptKnight.Player
 {
     [RequireComponent(typeof(SpriteRenderer))]
     public sealed class PlayerIdleAnimator : MonoBehaviour
     {
-        private const string PlayerSpriteSheetPath = "Assets/Art/Player/player_sheet_4x8.png";
+        private const string PlayerSpriteSheetPath = "Art/Player/player_sheet_4x8";
         private const float WalkFrameDuration = 0.14f;
         private const float AttackFrameDuration = 0.09f;
         private const int FramesPerDirection = 4;
@@ -150,14 +148,13 @@ namespace CryptKnight.Player
 
         private void LoadAnimationFrames()
         {
-#if UNITY_EDITOR
-            // The generated player has no prefab reference, so sliced sprites are resolved by stable import names.
-            UnityEngine.Object[] assets = AssetDatabase.LoadAllAssetsAtPath(PlayerSpriteSheetPath);
+            Sprite[] assets = RuntimeAssetLoader.LoadSprites(PlayerSpriteSheetPath);
             Dictionary<string, Sprite> spritesByName = new Dictionary<string, Sprite>();
 
             for (int i = 0; i < assets.Length; i++)
             {
-                if (assets[i] is Sprite sprite && sprite.name.StartsWith("player_", StringComparison.Ordinal) && sprite.rect.width > 1f && sprite.rect.height > 1f)
+                Sprite sprite = assets[i];
+                if (sprite.name.StartsWith("player_", StringComparison.Ordinal) && sprite.rect.width > 1f && sprite.rect.height > 1f)
                 {
                     spritesByName[sprite.name] = sprite;
                 }
@@ -171,7 +168,6 @@ namespace CryptKnight.Player
             AddFrames(spritesByName, attackFramesByDirection, CardinalDirection.Left, "player_attack_left");
             AddFrames(spritesByName, attackFramesByDirection, CardinalDirection.Right, "player_attack_right");
             AddFrames(spritesByName, attackFramesByDirection, CardinalDirection.Up, "player_attack_up");
-#endif
         }
 
         private static void AddFrames(

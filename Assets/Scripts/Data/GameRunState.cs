@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CryptKnight.Dungeon;
 
 namespace CryptKnight.Data
 {
@@ -50,7 +51,13 @@ namespace CryptKnight.Data
         public bool IsActive => Status == GameRunStatus.Active;
         public int MaxHealth => PlayerStats.MaxHealth;
         public PlayerRuntimeStats PlayerStats { get; private set; }
+        public DungeonRunState Dungeon { get; private set; }
         public IReadOnlyList<CollectedItemStack> CollectedItems => collectedItems;
+
+        public void InitializeDungeon(DungeonRunState dungeonState)
+        {
+            Dungeon = dungeonState ?? throw new ArgumentNullException(nameof(dungeonState));
+        }
 
         public static GameRunState CreateNewRun(int runNumber, int seed, int dungeonWidth, int dungeonHeight, int maxHealth)
         {
@@ -81,6 +88,16 @@ namespace CryptKnight.Data
             }
 
             Status = GameRunStatus.Quit;
+        }
+
+        public void CompleteRun()
+        {
+            if (!IsActive)
+            {
+                return;
+            }
+
+            Status = GameRunStatus.Completed;
         }
 
         public void ApplyDamage(int halfHeartDamage)

@@ -10,6 +10,8 @@ namespace CryptKnight.Audio
         private const string ChestOpenPath = "Audio/SFX/crypt-knight-sfx-chest-open";
         private const string SpiderDeathPath = "Audio/SFX/crypt-knight-sfx-spider-death";
         private const string ZombieDeathPath = "Audio/SFX/crypt-knight-sfx-zombie-death";
+        private const string DefeatPath = "Audio/SFX/crypt-knight-sfx-defeat";
+        private const string VictoryPath = "Audio/SFX/crypt-knight-sfx-victory";
         private const float ItemPowerupPickupVolume = 0.55f;
 
         private static AudioSource audioSource;
@@ -19,6 +21,8 @@ namespace CryptKnight.Audio
         private static AudioClip chestOpenClip;
         private static AudioClip spiderDeathClip;
         private static AudioClip zombieDeathClip;
+        private static AudioClip defeatClip;
+        private static AudioClip victoryClip;
 
         public static void PlayItemPowerupPickup()
         {
@@ -50,8 +54,23 @@ namespace CryptKnight.Audio
             PlayOneShot(ref zombieDeathClip, ZombieDeathPath);
         }
 
+        public static void PlayDefeat()
+        {
+            PlayOneShot(ref defeatClip, DefeatPath);
+        }
+
+        public static void PlayVictory()
+        {
+            PlayOneShot(ref victoryClip, VictoryPath);
+        }
+
         private static void PlayOneShot(ref AudioClip cachedClip, string resourcePath, float volumeScale = 1f)
         {
+            if (!UnityEngine.Application.isPlaying)
+            {
+                return;
+            }
+
             AudioClip clip = LoadClip(ref cachedClip, resourcePath);
             AudioSource source = GetAudioSource();
             if (clip == null || source == null)

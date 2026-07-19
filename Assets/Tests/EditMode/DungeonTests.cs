@@ -26,6 +26,16 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
+        public void EveryDungeonHasOneFinalRoom()
+        {
+            for (int seed = 1; seed <= 20; seed++)
+            {
+                DungeonLayout layout = DungeonLayoutGenerator.Generate(4, 4, seed);
+                Assert.That(layout.Rooms.Count(room => room.RoomType == RoomType.Final), Is.EqualTo(1));
+            }
+        }
+
+        [Test]
         public void GeneratedRoomsAreConnected()
         {
             DungeonLayout layout = DungeonLayoutGenerator.Generate(4, 4, 12345);

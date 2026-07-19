@@ -1,8 +1,6 @@
 using System.Collections.Generic;
+using CryptKnight.Content;
 using UnityEngine;
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 
 namespace CryptKnight.Loot
 {
@@ -10,14 +8,14 @@ namespace CryptKnight.Loot
     {
         private const int CircleSpriteSize = 64;
         private const string KeyItemId = "key";
-        private const string KeyAssetPath = "Assets/Art/Items/key.png";
+        private const string KeyAssetPath = "Art/Items/key";
 
         private static readonly Dictionary<string, string> defaultAssetPathsByItemId = new Dictionary<string, string>
         {
-            { "heart_container", "Assets/Art/Items/heart_container.png" },
-            { "damage_up", "Assets/Art/Items/damage_up.png" },
-            { "speed_up", "Assets/Art/Items/speed_up.png" },
-            { "attack_rate_up", "Assets/Art/Items/attack_rate_up.png" }
+            { "heart_container", "Art/Items/heart_container" },
+            { "damage_up", "Art/Items/damage_up" },
+            { "speed_up", "Art/Items/speed_up" },
+            { "attack_rate_up", "Art/Items/attack_rate_up" }
         };
 
         private static readonly Dictionary<string, Sprite> circleSpritesByItemId = new Dictionary<string, Sprite>();
@@ -115,9 +113,8 @@ namespace CryptKnight.Loot
                 return keySprite;
             }
 
-#if UNITY_EDITOR
-            keySprite = LoadSpriteAtPath(KeyAssetPath, "key_0") ?? LoadSpriteAtPath(KeyAssetPath, "key");
-#endif
+            keySprite = RuntimeAssetLoader.LoadSprite(KeyAssetPath, "key_0")
+                ?? RuntimeAssetLoader.LoadSprite(KeyAssetPath, "key");
             return keySprite;
         }
 
@@ -130,19 +127,14 @@ namespace CryptKnight.Loot
                 return cachedSprite;
             }
 
-            Sprite sprite = null;
-#if UNITY_EDITOR
-            string assetPath = iconAssetPath;
-            if (string.IsNullOrWhiteSpace(assetPath))
+            string resourcePath = iconAssetPath;
+            if (string.IsNullOrWhiteSpace(resourcePath))
             {
-                defaultAssetPathsByItemId.TryGetValue(safeItemId, out assetPath);
+                defaultAssetPathsByItemId.TryGetValue(safeItemId, out resourcePath);
             }
 
-            if (!string.IsNullOrWhiteSpace(assetPath))
-            {
-                sprite = AssetDatabase.LoadAssetAtPath<Sprite>(assetPath) ?? LoadSpriteAtPath(assetPath, safeItemId);
-            }
-#endif
+            Sprite sprite = RuntimeAssetLoader.LoadSprite(resourcePath, safeItemId)
+                ?? RuntimeAssetLoader.LoadSprite(resourcePath);
 
             if (sprite != null)
             {
@@ -151,22 +143,6 @@ namespace CryptKnight.Loot
 
             return sprite;
         }
-
-#if UNITY_EDITOR
-        private static Sprite LoadSpriteAtPath(string assetPath, string spriteName)
-        {
-            Object[] assets = AssetDatabase.LoadAllAssetsAtPath(assetPath);
-            for (int i = 0; i < assets.Length; i++)
-            {
-                if (assets[i] is Sprite sprite && sprite.name == spriteName)
-                {
-                    return sprite;
-                }
-            }
-
-            return null;
-        }
-#endif
 
         private static Sprite CreateCircleSprite(Color color)
         {

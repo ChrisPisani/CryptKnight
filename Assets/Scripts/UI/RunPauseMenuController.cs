@@ -2,13 +2,11 @@ using System.Collections.Generic;
 using System.Linq;
 using CryptKnight.Application;
 using CryptKnight.Audio;
+using CryptKnight.Content;
 using CryptKnight.Data;
 using CryptKnight.Loot;
 using UnityEngine;
 using UnityEngine.UI;
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
@@ -17,14 +15,14 @@ namespace CryptKnight.UI
 {
     public sealed class RunPauseMenuController : MonoBehaviour
     {
-        private const string BloodlinesPanelSpritePath = "Assets/Art/UI/Bloodlines/Frames/Frame_main_menu_red.png";
-        private const string BloodlinesButtonDefaultPath = "Assets/Art/UI/Bloodlines/Buttons/Status_Red_Default.png";
-        private const string BloodlinesButtonHoverPath = "Assets/Art/UI/Bloodlines/Buttons/Status_Red_Hover.png";
-        private const string BloodlinesButtonPressedPath = "Assets/Art/UI/Bloodlines/Buttons/Status_Pressed.png";
-        private const string BloodlinesButtonDisabledPath = "Assets/Art/UI/Bloodlines/Buttons/Status_Disable.png";
-        private const string BloodlinesSliderEmptyPath = "Assets/Art/UI/Bloodlines/Sliders/Slider_empty.png";
-        private const string BloodlinesSliderFullPath = "Assets/Art/UI/Bloodlines/Sliders/Slider_full_v1.png";
-        private const string BloodlinesSliderHandlePath = "Assets/Art/UI/Bloodlines/Sliders/Slider_toggler.png";
+        private const string BloodlinesPanelSpritePath = "Art/UI/Bloodlines/Frames/Frame_main_menu_red";
+        private const string BloodlinesButtonDefaultPath = "Art/UI/Bloodlines/Buttons/Status_Red_Default";
+        private const string BloodlinesButtonHoverPath = "Art/UI/Bloodlines/Buttons/Status_Red_Hover";
+        private const string BloodlinesButtonPressedPath = "Art/UI/Bloodlines/Buttons/Status_Pressed";
+        private const string BloodlinesButtonDisabledPath = "Art/UI/Bloodlines/Buttons/Status_Disable";
+        private const string BloodlinesSliderEmptyPath = "Art/UI/Bloodlines/Sliders/Slider_empty";
+        private const string BloodlinesSliderFullPath = "Art/UI/Bloodlines/Sliders/Slider_full_v1";
+        private const string BloodlinesSliderHandlePath = "Art/UI/Bloodlines/Sliders/Slider_toggler";
 
         private static readonly Color OverlayColor = new Color(0.01f, 0.012f, 0.016f, 0.82f);
         private static readonly Color PanelColor = new Color(0.10f, 0.10f, 0.13f, 0.97f);
@@ -357,24 +355,7 @@ namespace CryptKnight.UI
 
         private static Sprite LoadBloodlinesSprite(string assetPath)
         {
-#if UNITY_EDITOR
-            Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
-            if (sprite != null)
-            {
-                return sprite;
-            }
-
-            UnityEngine.Object[] assets = AssetDatabase.LoadAllAssetsAtPath(assetPath);
-            for (int i = 0; i < assets.Length; i++)
-            {
-                if (assets[i] is Sprite childSprite)
-                {
-                    return childSprite;
-                }
-            }
-#endif
-
-            return null;
+            return RuntimeAssetLoader.LoadSprite(assetPath);
         }
 
         private static Sprite GetBloodlinesPanelSprite()

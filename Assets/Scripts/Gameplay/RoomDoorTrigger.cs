@@ -1,3 +1,4 @@
+using System;
 using CryptKnight.Dungeon;
 using CryptKnight.Player;
 using UnityEngine;
@@ -8,12 +9,12 @@ namespace CryptKnight.Gameplay
     {
         private const float MinimumEntryInputDot = 0.65f;
 
-        private GameplaySceneController controller;
+        private Action<RoomDirection> travel;
         private RoomDirection direction;
 
-        public void Initialize(GameplaySceneController sceneController, RoomDirection doorDirection)
+        public void Initialize(Action<RoomDirection> travelAction, RoomDirection doorDirection)
         {
-            controller = sceneController;
+            travel = travelAction;
             direction = doorDirection;
         }
 
@@ -29,7 +30,7 @@ namespace CryptKnight.Gameplay
 
         private void TryTravel(Collider2D other)
         {
-            if (controller == null || other.GetComponentInParent<PlayerController>() == null)
+            if (travel == null || other.GetComponentInParent<PlayerController>() == null)
             {
                 return;
             }
@@ -41,7 +42,7 @@ namespace CryptKnight.Gameplay
                 return;
             }
 
-            controller.TravelThroughDoor(direction);
+            travel(direction);
         }
 
         public static bool IsInputEnteringDoor(RoomDirection doorDirection, Vector2 moveInput)

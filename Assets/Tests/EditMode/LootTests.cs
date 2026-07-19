@@ -55,12 +55,12 @@ namespace CryptKnight.Tests.EditMode
 
             Assert.That(heartItem.StatModifier.MaxHealthBonus, Is.EqualTo(2));
             Assert.That(heartItem.Description, Is.EqualTo("Gain 1 max heart."));
-            Assert.That(heartItem.IconAssetPath, Is.EqualTo("Assets/Art/Items/heart_container.png"));
+            Assert.That(heartItem.IconAssetPath, Is.EqualTo("Art/Items/heart_container"));
             Assert.That(damageItem.StatModifier.DamageBonus, Is.EqualTo(1));
             Assert.That(speedItem.StatModifier.MovementSpeedBonus, Is.EqualTo(1f));
             Assert.That(attackRateItem.StatModifier.AttackRateBonus, Is.EqualTo(0.2f));
             Assert.That(keyItem.KeyAmount, Is.EqualTo(1));
-            Assert.That(keyItem.IconAssetPath, Is.EqualTo("Assets/Art/Items/key.png"));
+            Assert.That(keyItem.IconAssetPath, Is.EqualTo("Art/Items/key"));
         }
 
         [Test]
@@ -189,7 +189,7 @@ namespace CryptKnight.Tests.EditMode
       ""itemId"": ""test_item"",
       ""displayName"": ""Test Item"",
       ""description"": ""Used by tests to prove config parsing works."",
-      ""iconAssetPath"": ""Assets/Art/Items/test_item.png"",
+      ""iconAssetPath"": ""Art/Items/test_item"",
       ""keyAmount"": 3,
       ""allowedSources"": [""Enemy""],
       ""statModifier"": { ""maxHealthBonus"": 0, ""damageBonus"": 2, ""movementSpeedBonus"": 0.5, ""attackRateBonus"": 0.1 }
@@ -207,7 +207,7 @@ namespace CryptKnight.Tests.EditMode
             Assert.That(item.ItemId, Is.EqualTo("test_item"));
             Assert.That(item.DisplayName, Is.EqualTo("Test Item"));
             Assert.That(item.Description, Is.EqualTo("Used by tests to prove config parsing works."));
-            Assert.That(item.IconAssetPath, Is.EqualTo("Assets/Art/Items/test_item.png"));
+            Assert.That(item.IconAssetPath, Is.EqualTo("Art/Items/test_item"));
             Assert.That(item.KeyAmount, Is.EqualTo(3));
             Assert.That(item.CanAppearFrom(LootSourceType.Enemy), Is.True);
             Assert.That(item.CanAppearFrom(LootSourceType.Chest), Is.False);

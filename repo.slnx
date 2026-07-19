@@ -1,4 +1,4 @@
-﻿<Solution>
+<Solution>
   <Project Path="CryptKnight.Runtime.csproj" />
   <Project Path="CryptKnight.EditModeTests.csproj" />
 </Solution>

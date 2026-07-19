@@ -130,12 +130,8 @@ namespace CryptKnight.Tests.EditMode
         [Test]
         public void StarterRoomGetsKeyAndChest()
         {
-            GameObject controllerObject = new GameObject("Gameplay Controller");
-            createdObjects.Add(controllerObject);
-            GameplaySceneController controller = controllerObject.AddComponent<GameplaySceneController>();
-            DungeonRoomRuntimeState roomState = new DungeonRoomRuntimeState(Vector2Int.zero, RoomType.Starter);
-
-            InvokePrivateMethod(controller, "AddStarterGiftToRoomState", roomState);
+            DungeonRunState dungeon = DungeonRunStateFactory.Create(4, 4, 12345);
+            DungeonRoomRuntimeState roomState = dungeon.GetRoomState(dungeon.Layout.StartPosition);
 
             Assert.That(roomState.Loot, Has.Count.EqualTo(1));
             Assert.That(roomState.Loot.Single().ItemDefinition.ItemId, Is.EqualTo("key"));
@@ -168,7 +164,7 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void StarterAndFinalRoomsStayUnlocked()
+        public void StarterStaysOpenAndFinalStaysLocked()
         {
             DungeonRoomRuntimeState starterState = new DungeonRoomRuntimeState(Vector2Int.zero, RoomType.Starter);
             DungeonRoomRuntimeState finalState = new DungeonRoomRuntimeState(Vector2Int.one, RoomType.Final);
@@ -176,7 +172,7 @@ namespace CryptKnight.Tests.EditMode
             finalState.SetEnemyCount(1);
 
             Assert.That(starterState.IsLocked, Is.False);
-            Assert.That(finalState.IsLocked, Is.False);
+            Assert.That(finalState.IsLocked, Is.True);
         }
 
         [Test]
@@ -187,19 +183,28 @@ namespace CryptKnight.Tests.EditMode
             startRoom.Connect(RoomDirection.East, Vector2Int.right);
             nextRoom.Connect(RoomDirection.West, Vector2Int.zero);
             DungeonLayout layout = new DungeonLayout(2, 1, new[] { startRoom, nextRoom }, Vector2Int.zero, Vector2Int.right);
-            DungeonRoomNavigator navigator = new DungeonRoomNavigator(layout);
             DungeonRoomRuntimeState lockedState = CreateEnemyRoomState();
+            Dictionary<Vector2Int, DungeonRoomRuntimeState> roomStates = new Dictionary<Vector2Int, DungeonRoomRuntimeState>
+            {
+                { Vector2Int.zero, lockedState },
+                { Vector2Int.right, new DungeonRoomRuntimeState(Vector2Int.right, RoomType.Trap) }
+            };
+            DungeonRunState dungeon = new DungeonRunState(
+                layout,
+                roomStates,
+                new LootTableConfiguration(System.Array.Empty<LootItemDefinition>(), new Dictionary<LootSourceType, float>()),
+                12345);
 
             GameObject controllerObject = new GameObject("Gameplay Controller");
             createdObjects.Add(controllerObject);
             GameplaySceneController controller = controllerObject.AddComponent<GameplaySceneController>();
-            SetPrivateField(controller, "roomNavigator", navigator);
-            GetRoomStates(controller)[Vector2Int.zero] = lockedState;
+            SetPrivateField(controller, "dungeonRun", dungeon);
+            SetPrivateField(controller, "roomNavigator", dungeon.Navigator);
 
             bool moved = controller.TryTravelThroughDoor(RoomDirection.East);
 
             Assert.That(moved, Is.False);
-            Assert.That(navigator.CurrentRoom.GridPosition, Is.EqualTo(Vector2Int.zero));
+            Assert.That(dungeon.Navigator.CurrentRoom.GridPosition, Is.EqualTo(Vector2Int.zero));
         }
 
         [Test]
@@ -226,6 +231,29 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
+        public void EnemyStateKeepsHealthAndPosition()
+        {
+            DungeonRoomRuntimeState roomState = new DungeonRoomRuntimeState(Vector2Int.zero, RoomType.Enemy);
+            RoomEnemyInstance enemy = roomState.AddEnemy(CryptKnight.Enemies.EnemyKind.Zombie, Vector2.zero, 5);
+
+            enemy.UpdateRuntime(new Vector2(2f, -1f), 3);
+
+            Assert.That(enemy.Position, Is.EqualTo(new Vector2(2f, -1f)));
+            Assert.That(enemy.CurrentHealth, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void ChestRewardSeedsAreStable()
+        {
+            DungeonRunState firstRun = DungeonRunStateFactory.Create(4, 4, 24680);
+            DungeonRunState secondRun = DungeonRunStateFactory.Create(4, 4, 24680);
+            RoomChestInstance firstChest = firstRun.GetRoomState(firstRun.Layout.StartPosition).Chests.Single();
+            RoomChestInstance secondChest = secondRun.GetRoomState(secondRun.Layout.StartPosition).Chests.Single();
+
+            Assert.That(firstChest.RewardSeed, Is.EqualTo(secondChest.RewardSeed));
+        }
+
+        [Test]
         public void DefaultRoomLootIsDisabled()
         {
             LootDistributionRules rules = LootDistributionRules.CreateDefault();
@@ -233,6 +261,31 @@ namespace CryptKnight.Tests.EditMode
             Assert.That(rules.ShouldPlaceLooseRoomLoot(RoomType.Enemy, 12345, Vector2Int.zero), Is.False);
             Assert.That(rules.RoomLootChance, Is.EqualTo(0f));
             Assert.That(rules.KeySpawnChance, Is.EqualTo(0.10f));
+        }
+
+        [Test]
+        public void GeneratedLootPositionsAreStable()
+        {
+            LootDistributionRules rules = LootDistributionRules.CreateDefault();
+            Vector2Int roomPosition = new Vector2Int(2, 3);
+
+            Assert.That(
+                rules.GetChestSpawnPosition(12345, roomPosition),
+                Is.EqualTo(rules.GetChestSpawnPosition(12345, roomPosition)));
+            Assert.That(
+                rules.GetKeySpawnPosition(12345, roomPosition),
+                Is.EqualTo(rules.GetKeySpawnPosition(12345, roomPosition)));
+        }
+
+        [Test]
+        public void LootChancesStayBetweenZeroAndOne()
+        {
+            LootDistributionRules rules = new LootDistributionRules(-1f, 2f, 5f);
+
+            Assert.That(rules.ChestSpawnChance, Is.Zero);
+            Assert.That(rules.RoomLootChance, Is.EqualTo(1f));
+            Assert.That(rules.KeySpawnChance, Is.EqualTo(1f));
+            Assert.That(LootDistributionRules.ClampChance(0.4f), Is.EqualTo(0.4f));
         }
 
         private static DungeonRoomRuntimeState CreateEnemyRoomState()
@@ -269,13 +322,6 @@ namespace CryptKnight.Tests.EditMode
                 keyAmount: keyAmount);
         }
 
-        private static Dictionary<Vector2Int, DungeonRoomRuntimeState> GetRoomStates(GameplaySceneController controller)
-        {
-            FieldInfo field = typeof(GameplaySceneController).GetField("roomStates", BindingFlags.Instance | BindingFlags.NonPublic);
-            Assert.That(field, Is.Not.Null);
-            return (Dictionary<Vector2Int, DungeonRoomRuntimeState>)field.GetValue(controller);
-        }
-
         private static void SetPrivateField(object target, string fieldName, object value)
         {
             FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
@@ -283,11 +329,5 @@ namespace CryptKnight.Tests.EditMode
             field.SetValue(target, value);
         }
 
-        private static void InvokePrivateMethod(object target, string methodName, params object[] arguments)
-        {
-            MethodInfo method = target.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
-            Assert.That(method, Is.Not.Null);
-            method.Invoke(target, arguments);
-        }
     }
 }

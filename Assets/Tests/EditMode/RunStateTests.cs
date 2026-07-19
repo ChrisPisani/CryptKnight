@@ -1,5 +1,7 @@
+using CryptKnight.Application;
 using CryptKnight.Data;
 using NUnit.Framework;
+using UnityEngine;
 
 namespace CryptKnight.Tests.EditMode
 {
@@ -183,6 +185,54 @@ namespace CryptKnight.Tests.EditMode
 
             Assert.That(runState.Status, Is.EqualTo(GameRunStatus.Quit));
             Assert.That(runState.CurrentHealth, Is.EqualTo(6));
+        }
+
+        [Test]
+        public void CompletedRunCannotChange()
+        {
+            GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, 6);
+
+            runState.CompleteRun();
+            runState.QuitRun();
+            runState.ApplyDamage(99);
+
+            Assert.That(runState.Status, Is.EqualTo(GameRunStatus.Completed));
+            Assert.That(runState.CurrentHealth, Is.EqualTo(6));
+            Assert.That(runState.IsActive, Is.False);
+        }
+
+        [Test]
+        public void PlayerDeathEndsRun()
+        {
+            GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, 6);
+
+            runState.ApplyDamage(6);
+
+            Assert.That(runState.Status, Is.EqualTo(GameRunStatus.Failed));
+            Assert.That(runState.CurrentHealth, Is.Zero);
+        }
+
+        [Test]
+        public void ManagerEndsCompletedAndFailedRuns()
+        {
+            GameManager manager = GameManager.Instance;
+            try
+            {
+                manager.StartNewRun();
+                manager.CompleteCurrentRun();
+                Assert.That(manager.CurrentRun.Status, Is.EqualTo(GameRunStatus.Completed));
+
+                manager.StartNewRun();
+                manager.DamagePlayer(99);
+                Assert.That(manager.CurrentRun.Status, Is.EqualTo(GameRunStatus.Failed));
+            }
+            finally
+            {
+                if (manager != null)
+                {
+                    Object.DestroyImmediate(manager.gameObject);
+                }
+            }
         }
 
         [Test]

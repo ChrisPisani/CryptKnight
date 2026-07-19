@@ -1,14 +1,12 @@
+using CryptKnight.Content;
 using UnityEngine;
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 
 namespace CryptKnight.Combat
 {
     public static class ProjectileFactory
     {
-        private const string PlayerProjectileAssetPath = "Assets/Art/Projectiles/projectile_player_blue.png";
-        private const string EnemyProjectileAssetPath = "Assets/Art/Projectiles/projectile_enemy_red.png";
+        private const string PlayerProjectileAssetPath = "Art/Projectiles/projectile_player_blue";
+        private const string EnemyProjectileAssetPath = "Art/Projectiles/projectile_enemy_red";
         private const float ProjectileVisualDiameter = 0.54f;
         private static Sprite circleSprite;
         private static Sprite playerProjectileSprite;
@@ -111,7 +109,7 @@ namespace CryptKnight.Combat
         {
             if (playerProjectileSprite == null)
             {
-                playerProjectileSprite = LoadEditorSprite(PlayerProjectileAssetPath);
+                playerProjectileSprite = RuntimeAssetLoader.LoadSprite(PlayerProjectileAssetPath);
             }
 
             return playerProjectileSprite != null ? playerProjectileSprite : GetCircleSprite();
@@ -121,7 +119,7 @@ namespace CryptKnight.Combat
         {
             if (enemyProjectileSprite == null)
             {
-                enemyProjectileSprite = LoadEditorSprite(EnemyProjectileAssetPath);
+                enemyProjectileSprite = RuntimeAssetLoader.LoadSprite(EnemyProjectileAssetPath);
             }
 
             return enemyProjectileSprite != null ? enemyProjectileSprite : GetCircleSprite();
@@ -187,15 +185,6 @@ namespace CryptKnight.Combat
             {
                 return null;
             }
-        }
-
-        private static Sprite LoadEditorSprite(string assetPath)
-        {
-#if UNITY_EDITOR
-            return AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
-#else
-            return null;
-#endif
         }
 
         private static Sprite GetCircleSprite()

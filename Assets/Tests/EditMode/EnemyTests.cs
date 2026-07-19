@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Reflection;
 using CryptKnight.Dungeon;
 using CryptKnight.Enemies;
 using CryptKnight.Gameplay;
@@ -109,6 +110,28 @@ namespace CryptKnight.Tests.EditMode
             health.ApplyDamage(4);
 
             Assert.That(health.CurrentHealth, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void EnemyStateUpdatesWhenRoomCloses()
+        {
+            DungeonRoomRuntimeState roomState = new DungeonRoomRuntimeState(Vector2Int.zero, RoomType.Enemy);
+            RoomEnemyInstance roomEnemy = roomState.AddEnemy(EnemyKind.Zombie, Vector2.zero, 5);
+            GameObject enemy = CreateObject("Tracked Enemy");
+            enemy.transform.position = new Vector2(2f, -1f);
+            EnemyHealth health = enemy.AddComponent<EnemyHealth>();
+            health.Initialize(5, 3);
+            EnemyRoomStateTracker tracker = enemy.AddComponent<EnemyRoomStateTracker>();
+            tracker.Initialize(roomEnemy, health);
+
+            MethodInfo onDisable = typeof(EnemyRoomStateTracker).GetMethod(
+                "OnDisable",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(onDisable, Is.Not.Null);
+            onDisable.Invoke(tracker, null);
+
+            Assert.That(roomEnemy.Position, Is.EqualTo(new Vector2(2f, -1f)));
+            Assert.That(roomEnemy.CurrentHealth, Is.EqualTo(3));
         }
 
         [Test]

@@ -132,7 +132,7 @@ namespace CryptKnight.Loot
                 description,
                 statModifier,
                 allowedSources,
-                $"Assets/Art/Items/{itemId}.png",
+                $"Art/Items/{itemId}",
                 keyAmount);
         }
 
