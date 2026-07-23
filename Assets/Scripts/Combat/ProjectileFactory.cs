@@ -7,11 +7,14 @@ namespace CryptKnight.Combat
     {
         private const string PlayerProjectileAssetPath = "Art/Projectiles/projectile_player_blue";
         private const string EnemyProjectileAssetPath = "Art/Projectiles/projectile_enemy_red";
+        private const string TrapProjectileAssetPath = "Art/Traps/trap_projectile";
         private const float ProjectileVisualDiameter = 0.54f;
+        private const float TrapProjectileVisualLength = 0.75f;
         private static Sprite circleSprite;
         private static Sprite playerProjectileSprite;
         private static Sprite enemyProjectileSprite;
         private static Sprite spiderPurpleProjectileSprite;
+        private static Sprite trapProjectileSprite;
 
         // Projectiles are generated from code here, maybe it should be a prefab?
         public static ProjectileController CreateCircleProjectile(
@@ -41,7 +44,10 @@ namespace CryptKnight.Combat
             renderer.sprite = GetProjectileSprite(targetType, visualStyle);
             renderer.color = GetRendererColor(renderer.sprite, color, visualStyle);
             renderer.sortingOrder = 8;
-            SetProjectileVisualTransform(visualObject.transform, renderer, normalizedDirection, ProjectileVisualDiameter);
+            float visualSize = visualStyle == ProjectileVisualStyle.TrapProjectile
+                ? TrapProjectileVisualLength
+                : ProjectileVisualDiameter;
+            SetProjectileVisualTransform(visualObject.transform, renderer, normalizedDirection, visualSize);
 
             CircleCollider2D collider = projectileObject.AddComponent<CircleCollider2D>();
             collider.radius = radius;
@@ -57,7 +63,11 @@ namespace CryptKnight.Combat
             return projectile;
         }
 
-        private static void SetProjectileVisualTransform(Transform visualTransform, SpriteRenderer renderer, Vector2 direction, float targetDiameter)
+        private static void SetProjectileVisualTransform(
+            Transform visualTransform,
+            SpriteRenderer renderer,
+            Vector2 direction,
+            float targetDiameter)
         {
             Sprite sprite = renderer.sprite;
             if (sprite == null || sprite.bounds.size.x <= 0f || sprite.bounds.size.y <= 0f)
@@ -70,7 +80,7 @@ namespace CryptKnight.Combat
             float scale = targetDiameter / longestSide;
             visualTransform.localScale = new Vector3(scale, scale, 1f);
 
-            // Imported projectile art points right, so rotate it onto the shot direction.
+            // Imported projectile art is authored pointing right, so rotate it onto the shot direction.
             float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
             visualTransform.localRotation = Quaternion.Euler(0f, 0f, angle);
         }
@@ -97,6 +107,11 @@ namespace CryptKnight.Combat
 
             if (targetType == DamageableTarget.Player)
             {
+                if (visualStyle == ProjectileVisualStyle.TrapProjectile)
+                {
+                    return GetTrapProjectileSprite();
+                }
+
                 return visualStyle == ProjectileVisualStyle.SpiderPurple
                     ? GetSpiderPurpleProjectileSprite()
                     : GetEnemyProjectileSprite();
@@ -123,6 +138,16 @@ namespace CryptKnight.Combat
             }
 
             return enemyProjectileSprite != null ? enemyProjectileSprite : GetCircleSprite();
+        }
+
+        private static Sprite GetTrapProjectileSprite()
+        {
+            if (trapProjectileSprite == null)
+            {
+                trapProjectileSprite = RuntimeAssetLoader.LoadSprite(TrapProjectileAssetPath);
+            }
+
+            return trapProjectileSprite != null ? trapProjectileSprite : GetCircleSprite();
         }
 
         private static Sprite GetSpiderPurpleProjectileSprite()

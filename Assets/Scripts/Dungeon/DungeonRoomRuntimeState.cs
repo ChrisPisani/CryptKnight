@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using CryptKnight.Enemies;
 using CryptKnight.Loot;
+using CryptKnight.Traps;
 using UnityEngine;
 
 namespace CryptKnight.Dungeon
@@ -11,9 +12,11 @@ namespace CryptKnight.Dungeon
         private readonly List<RoomLootInstance> loot = new List<RoomLootInstance>();
         private readonly List<RoomChestInstance> chests = new List<RoomChestInstance>();
         private readonly List<RoomEnemyInstance> enemies = new List<RoomEnemyInstance>();
+        private readonly List<RoomTrapInstance> traps = new List<RoomTrapInstance>();
         private int nextLootId;
         private int nextChestId;
         private int nextEnemyId;
+        private int nextTrapId;
 
         public DungeonRoomRuntimeState(Vector2Int gridPosition, RoomType roomType)
         {
@@ -34,6 +37,7 @@ namespace CryptKnight.Dungeon
         public IReadOnlyList<RoomLootInstance> Loot => loot;
         public IReadOnlyList<RoomChestInstance> Chests => chests;
         public IReadOnlyList<RoomEnemyInstance> Enemies => enemies;
+        public IReadOnlyList<RoomTrapInstance> Traps => traps;
 
         public void InitializeFinalEncounter(FinalEncounterConfiguration configuration)
         {
@@ -137,6 +141,22 @@ namespace CryptKnight.Dungeon
 
             instance.MarkOpened();
             return true;
+        }
+
+        public RoomTrapInstance AddTrap(
+            TrapKind kind,
+            Vector2 position,
+            Vector2 fireDirection,
+            float phaseOffsetSeconds)
+        {
+            RoomTrapInstance instance = new RoomTrapInstance(
+                nextTrapId++,
+                kind,
+                position,
+                fireDirection,
+                phaseOffsetSeconds);
+            traps.Add(instance);
+            return instance;
         }
 
         private RoomLootInstance FindLoot(int lootId)
@@ -253,5 +273,28 @@ namespace CryptKnight.Dungeon
             CurrentHealth = 0;
             IsDefeated = true;
         }
+    }
+
+    public sealed class RoomTrapInstance
+    {
+        public RoomTrapInstance(
+            int id,
+            TrapKind kind,
+            Vector2 position,
+            Vector2 fireDirection,
+            float phaseOffsetSeconds)
+        {
+            Id = id;
+            Kind = kind;
+            Position = position;
+            FireDirection = fireDirection.sqrMagnitude > 0.001f ? fireDirection.normalized : Vector2.zero;
+            PhaseOffsetSeconds = Mathf.Max(0f, phaseOffsetSeconds);
+        }
+
+        public int Id { get; }
+        public TrapKind Kind { get; }
+        public Vector2 Position { get; }
+        public Vector2 FireDirection { get; }
+        public float PhaseOffsetSeconds { get; }
     }
 }

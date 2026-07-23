@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using CryptKnight.Loot;
+using CryptKnight.Traps;
 using UnityEngine;
 
 namespace CryptKnight.Dungeon
@@ -14,7 +15,8 @@ namespace CryptKnight.Dungeon
             Dictionary<Vector2Int, DungeonRoomRuntimeState> roomStates,
             LootTableConfiguration lootConfiguration,
             int runSeed,
-            FinalEncounterConfiguration finalEncounterConfiguration = null)
+            FinalEncounterConfiguration finalEncounterConfiguration = null,
+            TrapRoomConfiguration trapConfiguration = null)
         {
             Layout = layout ?? throw new ArgumentNullException(nameof(layout));
             rooms = roomStates ?? throw new ArgumentNullException(nameof(roomStates));
@@ -23,6 +25,7 @@ namespace CryptKnight.Dungeon
             LootSystem = new LootSystem(lootConfiguration);
             LootRandom = new System.Random(runSeed ^ 0x4C4F4F54);
             FinalEncounterConfig = finalEncounterConfiguration ?? FinalEncounterConfiguration.CreateDefault();
+            TrapConfiguration = trapConfiguration ?? TrapRoomConfiguration.CreateDefault();
         }
 
         public DungeonLayout Layout { get; }
@@ -31,6 +34,7 @@ namespace CryptKnight.Dungeon
         public LootSystem LootSystem { get; }
         public System.Random LootRandom { get; }
         public FinalEncounterConfiguration FinalEncounterConfig { get; }
+        public TrapRoomConfiguration TrapConfiguration { get; }
         public IReadOnlyDictionary<Vector2Int, DungeonRoomRuntimeState> Rooms => rooms;
         public DungeonRoomRuntimeState CurrentRoomState => GetRoomState(Navigator.CurrentRoom.GridPosition);
 

@@ -7,6 +7,7 @@ using CryptKnight.Dungeon;
 using CryptKnight.Enemies;
 using CryptKnight.Loot;
 using CryptKnight.Player;
+using CryptKnight.Traps;
 using UnityEngine;
 
 namespace CryptKnight.Gameplay
@@ -20,6 +21,8 @@ namespace CryptKnight.Gameplay
         private static readonly Vector2 PlayerVisualOffset = new Vector2(0f, 0.08f);
         private static readonly Vector2 EnemyDropOffset = new Vector2(0f, 0.85f);
         private static readonly Vector2 RoomClearDropOffset = new Vector2(-0.85f, 0.85f);
+        private static readonly Color SpikeTrapColor = new Color(0.65f, 0.12f, 0.10f, 1f);
+        private static readonly Color ProjectileTrapColor = new Color(0.85f, 0.45f, 0.08f, 1f);
 
         private static GameplaySceneController instance;
         private static Sprite squareSprite;
@@ -210,7 +213,7 @@ namespace CryptKnight.Gameplay
             DungeonRoom currentRoom = roomNavigator.CurrentRoom;
             DungeonRoomRuntimeState roomState = dungeonRun.GetRoomState(currentRoom.GridPosition);
             environmentBuilder.Build(roomRoot.transform, currentRoom, dungeonRun.Layout, TravelThroughDoor);
-            CreateRoomContents(roomRoot.transform, currentRoom, roomState);
+            CreateRoomContents(roomRoot.transform, roomState);
             if (currentRoom.RoomType == RoomType.Final)
             {
                 StartFinalEncounter(roomRoot.transform, roomState);
@@ -355,25 +358,56 @@ namespace CryptKnight.Gameplay
             }
         }
 
-        private void CreateRoomContents(Transform parent, DungeonRoom room, DungeonRoomRuntimeState roomState)
+        private void CreateRoomContents(Transform parent, DungeonRoomRuntimeState roomState)
         {
-            switch (room.RoomType)
-            {
-                case RoomType.Trap:
-                    CreateTrapMarker(parent);
-                    break;
-            }
-
+            CreateRoomTraps(parent, roomState);
             CreateRoomEnemies(parent, roomState);
             CreateRoomChests(parent, roomState);
             CreateRoomLoot(parent, roomState);
         }
 
-        private void CreateTrapMarker(Transform parent)
+        private void CreateRoomTraps(Transform parent, DungeonRoomRuntimeState roomState)
         {
-            GameObject trap = CreateSpriteObject("Trap Room Marker", parent, Vector2.zero, new Vector2(2.0f, 0.35f), new Color(0.85f, 0.12f, 0.08f, 1f));
-            trap.GetComponent<SpriteRenderer>().sortingOrder = 3;
-            trap.AddComponent<BoxCollider2D>().isTrigger = true;
+            for (int i = 0; i < roomState.Traps.Count; i++)
+            {
+                RoomTrapInstance trapInstance = roomState.Traps[i];
+                if (trapInstance.Kind == TrapKind.Spike)
+                {
+                    CreateSpikeTrap(parent, trapInstance);
+                }
+                else if (trapInstance.Kind == TrapKind.WallProjectile)
+                {
+                    CreateWallProjectileTrap(parent, trapInstance);
+                }
+            }
+        }
+
+        private void CreateSpikeTrap(Transform parent, RoomTrapInstance trapInstance)
+        {
+            GameObject trap = TrapVisualFactory.CreateSpike(
+                $"Spike Trap {trapInstance.Id}",
+                parent,
+                trapInstance.Position,
+                SpikeTrapColor);
+            BoxCollider2D collider = trap.AddComponent<BoxCollider2D>();
+            collider.size = new Vector2(1.2f, 1.2f);
+            collider.isTrigger = true;
+            trap.AddComponent<SpikeTrap>().Initialize(dungeonRun.TrapConfiguration.GetDefinition(TrapKind.Spike));
+        }
+
+        private void CreateWallProjectileTrap(Transform parent, RoomTrapInstance trapInstance)
+        {
+            GameObject trap = TrapVisualFactory.CreateWall(
+                $"Wall Projectile Trap {trapInstance.Id}",
+                parent,
+                trapInstance.Position,
+                trapInstance.FireDirection,
+                ProjectileTrapColor);
+            trap.AddComponent<WallProjectileTrap>().Initialize(
+                dungeonRun.TrapConfiguration.GetDefinition(TrapKind.WallProjectile),
+                trapInstance.FireDirection,
+                parent,
+                trapInstance.PhaseOffsetSeconds);
         }
 
         private void CreateRoomChests(Transform parent, DungeonRoomRuntimeState roomState)

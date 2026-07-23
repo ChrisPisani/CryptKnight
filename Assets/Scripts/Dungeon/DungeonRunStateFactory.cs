@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using CryptKnight.Enemies;
 using CryptKnight.Loot;
+using CryptKnight.Traps;
 using UnityEngine;
 
 namespace CryptKnight.Dungeon
@@ -19,6 +20,8 @@ namespace CryptKnight.Dungeon
             LootDistributionRules lootRules = LootDistributionRules.CreateDefault();
             EnemySpawnRules enemyRules = EnemySpawnRules.CreateDefault();
             FinalEncounterConfiguration finalEncounterConfiguration = FinalEncounterConfiguration.CreateDefault();
+            TrapRoomConfiguration trapConfiguration = TrapRoomConfiguration.CreateDefault();
+            TrapGenerationRules trapRules = new TrapGenerationRules(trapConfiguration);
             DungeonLayout layout = DungeonLayoutGenerator.Generate(width, height, runSeed);
             Dictionary<Vector2Int, DungeonRoomRuntimeState> roomStates = new Dictionary<Vector2Int, DungeonRoomRuntimeState>();
 
@@ -30,10 +33,17 @@ namespace CryptKnight.Dungeon
                     lootConfiguration,
                     lootRules,
                     enemyRules,
-                    finalEncounterConfiguration);
+                    finalEncounterConfiguration,
+                    trapRules);
             }
 
-            return new DungeonRunState(layout, roomStates, lootConfiguration, runSeed, finalEncounterConfiguration);
+            return new DungeonRunState(
+                layout,
+                roomStates,
+                lootConfiguration,
+                runSeed,
+                finalEncounterConfiguration,
+                trapConfiguration);
         }
 
         private static DungeonRoomRuntimeState CreateRoomState(
@@ -42,7 +52,8 @@ namespace CryptKnight.Dungeon
             LootTableConfiguration lootConfiguration,
             LootDistributionRules lootRules,
             EnemySpawnRules enemyRules,
-            FinalEncounterConfiguration finalEncounterConfiguration)
+            FinalEncounterConfiguration finalEncounterConfiguration,
+            TrapGenerationRules trapRules)
         {
             DungeonRoomRuntimeState state = new DungeonRoomRuntimeState(room.GridPosition, room.RoomType);
             if (room.RoomType == RoomType.Final)
@@ -55,6 +66,13 @@ namespace CryptKnight.Dungeon
             {
                 RoomEnemySpawn spawn = enemySpawns[i];
                 state.AddEnemy(spawn.Kind, spawn.Position, GetEnemyMaxHealth(spawn.Kind));
+            }
+
+            IReadOnlyList<RoomTrapSpawn> trapSpawns = trapRules.CreateSpawns(room.RoomType, runSeed, room.GridPosition);
+            for (int i = 0; i < trapSpawns.Count; i++)
+            {
+                RoomTrapSpawn spawn = trapSpawns[i];
+                state.AddTrap(spawn.Kind, spawn.Position, spawn.FireDirection, spawn.PhaseOffsetSeconds);
             }
 
             if (room.RoomType == RoomType.Starter)

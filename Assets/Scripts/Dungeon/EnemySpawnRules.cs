@@ -37,7 +37,7 @@ namespace CryptKnight.Dungeon
 
         public static EnemySpawnRules CreateDefault()
         {
-            return new EnemySpawnRules(3, 5, 1, 2);
+            return new EnemySpawnRules(3, 5, 2, 3);
         }
 
         public IReadOnlyList<RoomEnemySpawn> CreateSpawns(RoomType roomType, int runSeed, Vector2Int roomPosition)
