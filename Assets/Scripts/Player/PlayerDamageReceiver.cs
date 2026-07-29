@@ -8,9 +8,10 @@ namespace CryptKnight.Player
     {
         public DamageableTarget TargetType => DamageableTarget.Player;
 
-        public void ApplyDamage(int damage)
+        public void ApplyDamage(float damage)
         {
-            GameManager.Instance.DamagePlayer(damage);
+            // Player health is stored in half-hearts, so any positive fractional hit costs at least one unit.
+            GameManager.Instance.DamagePlayer(Mathf.CeilToInt(Mathf.Max(0f, damage)));
         }
     }
 }

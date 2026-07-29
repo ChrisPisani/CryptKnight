@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using CryptKnight.Application;
 using CryptKnight.Audio;
 using CryptKnight.Combat;
@@ -8,6 +9,7 @@ using CryptKnight.Enemies;
 using CryptKnight.Loot;
 using CryptKnight.Player;
 using CryptKnight.Traps;
+using CryptKnight.UI;
 using UnityEngine;
 
 namespace CryptKnight.Gameplay
@@ -50,6 +52,9 @@ namespace CryptKnight.Gameplay
 
             GameObject controllerObject = new GameObject("Gameplay Scene Controller");
             instance = controllerObject.AddComponent<GameplaySceneController>();
+#if UNITY_EDITOR
+            controllerObject.AddComponent<EditorItemDebugConsole>().Initialize(instance);
+#endif
             DontDestroyOnLoad(controllerObject);
         }
 
@@ -520,6 +525,40 @@ namespace CryptKnight.Gameplay
             LootPickup pickup = CreateLootPickup(roomRoot.transform, roomState, lootInstance);
             pickup.PlaySpawnLaunch(launchStart, clampedPosition, GetPlayableRoomBounds());
         }
+
+#if UNITY_EDITOR
+        public IReadOnlyList<LootItemDefinition> EditorGetItems()
+        {
+            EnsureLootServices();
+            return lootConfiguration.Items;
+        }
+
+        public bool EditorSpawnItem(LootItemDefinition itemDefinition, out string message)
+        {
+            if (itemDefinition == null)
+            {
+                message = "No item was selected.";
+                return false;
+            }
+
+            GameRunState runState = GameManager.Instance.CurrentRun;
+            if (runState == null || !runState.IsActive || dungeonRun == null || playerTransform == null)
+            {
+                message = "Start a run before spawning items.";
+                return false;
+            }
+
+            DungeonRoomRuntimeState roomState = dungeonRun.CurrentRoomState;
+            int spawnIndex = roomState.Loot.Count;
+            float angle = spawnIndex * 2.399963f;
+            float radius = 1.25f + spawnIndex % 3 * 0.25f;
+            Vector2 offset = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
+            Vector2 targetPosition = ClampToPlayableRoom((Vector2)playerTransform.position + offset);
+            AddLootToRoom(roomState, itemDefinition, targetPosition, playerTransform.position);
+            message = $"Spawned {itemDefinition.DisplayName}.";
+            return true;
+        }
+#endif
 
         private bool IsCurrentRoom(DungeonRoomRuntimeState roomState)
         {

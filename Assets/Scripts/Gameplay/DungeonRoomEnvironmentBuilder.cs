@@ -50,7 +50,13 @@ namespace CryptKnight.Gameplay
 
             if (wallFrame != null)
             {
-                CreateTexturedSprite("Dungeon Wall Frame", parent, Vector2.zero, WallFrameSize, wallFrame, 6);
+                CreateTexturedSprite(
+                    "Dungeon Wall Frame",
+                    parent,
+                    Vector2.zero,
+                    WallFrameSize,
+                    wallFrame,
+                    DungeonRenderLayers.WallFrame);
             }
         }
 
@@ -85,7 +91,13 @@ namespace CryptKnight.Gameplay
                 return;
             }
 
-            GameObject frame = CreateTexturedSprite($"Door Frame {direction}", parent, DungeonRoomGeometry.GetDoorPosition(direction) + GetFrameOffset(direction), sprite.bounds.size, sprite, 7);
+            GameObject frame = CreateTexturedSprite(
+                $"Door Frame {direction}",
+                parent,
+                DungeonRoomGeometry.GetDoorPosition(direction) + GetFrameOffset(direction),
+                sprite.bounds.size,
+                sprite,
+                DungeonRenderLayers.DoorFrame);
             frame.transform.rotation = Quaternion.Euler(0f, 0f, direction == RoomDirection.East || direction == RoomDirection.South ? 180f : 0f);
         }
 
@@ -98,7 +110,13 @@ namespace CryptKnight.Gameplay
                 return;
             }
 
-            GameObject archway = CreateTexturedSprite($"Door Archway {direction}", parent, DungeonRoomGeometry.GetDoorPosition(direction) + GetArchwayOffset(direction), sprite.bounds.size, sprite, 8);
+            GameObject archway = CreateTexturedSprite(
+                $"Door Archway {direction}",
+                parent,
+                DungeonRoomGeometry.GetDoorPosition(direction) + GetArchwayOffset(direction),
+                sprite.bounds.size,
+                sprite,
+                DungeonRenderLayers.FinalDoorArchway);
             archway.transform.rotation = Quaternion.Euler(0f, 0f, direction == RoomDirection.South || direction == RoomDirection.East ? 180f : 0f);
         }
 

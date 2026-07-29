@@ -1,51 +1,252 @@
 {
   "sourceDropRates": [
-    { "source": "Enemy", "dropRate": 0.10 },
+    { "source": "Enemy", "dropRate": 0.08 },
     { "source": "Chest", "dropRate": 1.00 },
     { "source": "RoomClear", "dropRate": 0.20 },
     { "source": "Shop", "dropRate": 1.00 }
+  ],
+  "sourceRarityWeights": [
+    { "source": "Enemy", "common": 0.60, "uncommon": 0.27, "rare": 0.10, "legendary": 0.03 },
+    { "source": "RoomClear", "common": 0.60, "uncommon": 0.27, "rare": 0.10, "legendary": 0.03 },
+    { "source": "Chest", "common": 0.40, "uncommon": 0.35, "rare": 0.20, "legendary": 0.05 },
+    { "source": "Shop", "common": 0.40, "uncommon": 0.35, "rare": 0.20, "legendary": 0.05 }
   ],
   "items": [
     {
       "itemId": "heart_container",
       "displayName": "Monster Heart",
-      "description": "Gain 1 max heart.",
+      "description": "It still beats with stubborn, impossible life.",
       "iconAssetPath": "Art/Items/heart_container",
+      "rarity": "Common",
       "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
-      "statModifier": { "maxHealthBonus": 2, "damageBonus": 0, "movementSpeedBonus": 0.0, "attackRateBonus": 0.0 }
+      "statModifier": { "maxHealthBonus": 2 }
     },
     {
       "itemId": "damage_up",
       "displayName": "Spinach",
-      "description": "Increase attack damage by 1.",
+      "description": "A sailors favorite.",
       "iconAssetPath": "Art/Items/damage_up",
+      "rarity": "Common",
       "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
-      "statModifier": { "maxHealthBonus": 0, "damageBonus": 1, "movementSpeedBonus": 0.0, "attackRateBonus": 0.0 }
+      "statModifier": { "damageBonus": 1 }
     },
     {
       "itemId": "speed_up",
       "displayName": "Bottled Lightning",
-      "description": "Increase movement speed by 1.",
+      "description": "Stormlight claws at the glass, desperate to escape.",
       "iconAssetPath": "Art/Items/speed_up",
+      "rarity": "Common",
       "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
-      "statModifier": { "maxHealthBonus": 0, "damageBonus": 0, "movementSpeedBonus": 1.0, "attackRateBonus": 0.0 }
+      "statModifier": { "movementSpeedBonus": 1.0 }
     },
     {
       "itemId": "attack_rate_up",
       "displayName": "Chili Pepper",
-      "description": "Increase attack rate by 0.2 shots per second.",
+      "description": "Even the dead keep a safe distance from its heat.",
       "iconAssetPath": "Art/Items/attack_rate_up",
+      "rarity": "Common",
       "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
-      "statModifier": { "maxHealthBonus": 0, "damageBonus": 0, "movementSpeedBonus": 0.0, "attackRateBonus": 0.2 }
+      "statModifier": { "attackRateBonus": 0.2 }
     },
     {
       "itemId": "key",
       "displayName": "Key",
-      "description": "Gain 1 key.",
+      "description": "Cold iron teeth made for a lock deeper in the crypt.",
       "iconAssetPath": "Art/Items/key",
+      "rarity": "Common",
       "keyAmount": 1,
       "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
-      "statModifier": { "maxHealthBonus": 0, "damageBonus": 0, "movementSpeedBonus": 0.0, "attackRateBonus": 0.0 }
+      "statModifier": {}
+    },
+    {
+      "itemId": "bloody_knife",
+      "displayName": "Bloody Knife",
+      "description": "The blade is clean by morning. No one knows how.",
+      "iconAssetPath": "Art/Items/items_sheet_no_numbers_alpha",
+      "rarity": "Rare",
+      "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
+      "statModifier": { "damageBonus": 2, "attackRateBonus": -0.3 }
+    },
+    {
+      "itemId": "forgotten_skull",
+      "displayName": "Forgotten Skull",
+      "description": "It whispers directions to corridors that no longer exist.",
+      "iconAssetPath": "Art/Items/items_sheet_no_numbers_alpha",
+      "rarity": "Uncommon",
+      "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
+      "statModifier": { "projectileSpeedBonus": -1.0, "projectileBouncesBonus": 1 }
+    },
+    {
+      "itemId": "book_of_the_crypt",
+      "displayName": "Book of the Crypt",
+      "description": "Every page turns itself when the crypt grows quiet.",
+      "iconAssetPath": "Art/Items/items_sheet_no_numbers_alpha",
+      "rarity": "Rare",
+      "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
+      "statModifier": { "attackRateBonus": -0.20, "projectileCountBonus": 1 }
+    },
+    {
+      "itemId": "cracked_amethyst",
+      "displayName": "Cracked Amethyst",
+      "description": "Purple light leaks through a wound in the stone.",
+      "iconAssetPath": "Art/Items/items_sheet_no_numbers_alpha",
+      "rarity": "Uncommon",
+      "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
+      "statModifier": { "projectileSpeedBonus": -0.5, "projectileSizeBonus": 0.35 }
+    },
+    {
+      "itemId": "skeleton_key",
+      "displayName": "Skeleton Key",
+      "description": "Carved from bone, it remembers every lock it has opened.",
+      "iconAssetPath": "Art/Items/items_sheet_no_numbers_alpha",
+      "rarity": "Rare",
+      "keyAmount": 3,
+      "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
+      "statModifier": {}
+    },
+    {
+      "itemId": "eternal_candle",
+      "displayName": "Eternal Candle",
+      "description": "Its flame bends toward dangers hidden in the dark.",
+      "iconAssetPath": "Art/Items/items_sheet_no_numbers_alpha",
+      "rarity": "Uncommon",
+      "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
+      "statModifier": { "attackRateBonus": 0.35, "projectileSizeBonus": -0.10 }
+    },
+    {
+      "itemId": "dead_mans_coin",
+      "displayName": "Dead Man's Coin",
+      "description": "One side bears a king. The other bears your face.",
+      "iconAssetPath": "Art/Items/items_sheet_no_numbers_alpha",
+      "rarity": "Rare",
+      "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
+      "statModifier": { "damageBonus": 1.0, "movementSpeedBonus": -0.5, "projectileSpeedBonus": 0.5 }
+    },
+    {
+      "itemId": "treasure_map",
+      "displayName": "Treasure Map",
+      "description": "The ink redraws itself whenever no one is looking.",
+      "iconAssetPath": "Art/Items/items_sheet_no_numbers_alpha",
+      "rarity": "Uncommon",
+      "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
+      "statModifier": { "movementSpeedBonus": 1.0, "projectileSpeedBonus": 1.0 }
+    },
+    {
+      "itemId": "lucky_dice",
+      "displayName": "Lucky Dice",
+      "description": "They always land well, though never without a price.",
+      "iconAssetPath": "Art/Items/items_sheet_no_numbers_alpha",
+      "rarity": "Legendary",
+      "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
+      "statModifier": { "projectileCountBonus": 1, "projectileBouncesBonus": 1, "projectileSizeBonus": -0.20 }
+    },
+    {
+      "itemId": "blood_chalice",
+      "displayName": "Blood Chalice",
+      "description": "The cup is warm, and it is never quite empty.",
+      "iconAssetPath": "Art/Items/items_sheet_no_numbers_alpha",
+      "rarity": "Rare",
+      "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
+      "statModifier": { "maxHealthBonus": 2, "damageBonus": 0.5, "movementSpeedBonus": -0.5 }
+    },
+    {
+      "itemId": "pin_cushion",
+      "displayName": "Pin Cushion",
+      "description": "Every needle points toward something that wants you dead.",
+      "iconAssetPath": "Art/Items/items_sheet_no_numbers_alpha",
+      "rarity": "Legendary",
+      "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
+      "statModifier": { "projectileCountBonus": 2, "projectileSpeedBonus": -1.5, "projectileSizeBonus": -0.20 }
+    },
+    {
+      "itemId": "dread_knight_helm",
+      "displayName": "Dread Knight Helm",
+      "description": "A hollow visor waits for a knight who will not return.",
+      "iconAssetPath": "Art/Items/items_sheet_no_numbers_alpha",
+      "rarity": "Uncommon",
+      "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
+      "statModifier": { "maxHealthBonus": 2, "damageBonus": 0.5, "attackRateBonus": -0.15 }
+    },
+    {
+      "itemId": "garlic",
+      "displayName": "Garlic",
+      "description": "An old ward against hungers that wear familiar faces.",
+      "iconAssetPath": "Art/Items/items_sheet_no_numbers_alpha",
+      "rarity": "Uncommon",
+      "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
+      "statModifier": { "maxHealthBonus": 4, "movementSpeedBonus": -0.5 }
+    },
+    {
+      "itemId": "boo_beans",
+      "displayName": "Boo Beans",
+      "description": "The label promises courage. The rattling suggests otherwise.",
+      "iconAssetPath": "Art/Items/items_sheet_no_numbers_alpha",
+      "rarity": "Uncommon",
+      "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
+      "statModifier": { "movementSpeedBonus": 2, "projectileSizeBonus": -0.25 }
+    },
+    {
+      "itemId": "brine_brain",
+      "displayName": "Brine Brain",
+      "description": "Preserved wisdom with a distinctly questionable aftertaste.",
+      "iconAssetPath": "Art/Items/items_sheet_no_numbers_alpha",
+      "rarity": "Uncommon",
+      "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
+      "statModifier": { "movementSpeedBonus": -0.5, "attackRateBonus": 0.20, "projectileBouncesBonus": 1 }
+    },
+    {
+      "itemId": "suspicious_pile",
+      "displayName": "Suspicious Pile",
+      "description": "It moved once. Perhaps the floor was settling.",
+      "iconAssetPath": "Art/Items/items_sheet_no_numbers_alpha",
+      "rarity": "Uncommon",
+      "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
+      "statModifier": { "movementSpeedBonus": -0.5, "damageBonus": -0.5, "projectileSizeBonus": 1.0, "maxHealthBonus": 4 }
+    },
+    {
+      "itemId": "cloak_of_shadows",
+      "displayName": "Cloak of Shadows",
+      "description": "Its folds drink the light.",
+      "iconAssetPath": "Art/Items/items_sheet_no_numbers_alpha",
+      "rarity": "Rare",
+      "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
+      "statModifier": { "movementSpeedBonus": 2.0, "attackRateBonus": 0.3, "projectileSizeBonus": -1.0 }
+    },
+    {
+      "itemId": "chimkin",
+      "displayName": "Chimkin",
+      "description": "A noble drumstick from a bird of deeply uncertain origin.",
+      "iconAssetPath": "Art/Items/items_sheet_no_numbers_alpha",
+      "rarity": "Rare",
+      "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
+      "statModifier": { "maxHealthBonus": 2, "damageBonus": 0.5, "projectileSizeBonus": -0.5 }
+    },
+    {
+      "itemId": "blooshroom",
+      "displayName": "Blooshroom",
+      "description": "It hums softly whenever moonlight reaches the crypt.",
+      "iconAssetPath": "Art/Items/items_sheet_no_numbers_alpha",
+      "rarity": "Rare",
+      "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
+      "statModifier": { "attackRateBonus": -0.20, "projectileSizeBonus": 0.50, "projectileCountBonus": 1 }
+    },
+    {
+      "itemId": "watchers_eye",
+      "displayName": "Watcher's Eye",
+      "description": "It blinks only when you do.",
+      "iconAssetPath": "Art/Items/items_sheet_no_numbers_alpha",
+      "rarity": "Rare",
+      "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
+      "statModifier": { "projectileBouncesBonus": 1, "projectileSizeBonus": 1, "projectileSpeedBonus": 1, "movementSpeedBonus": -1.5 }
+    },
+    {
+      "itemId": "borrowed_time",
+      "displayName": "Borrowed Time",
+      "description": "The sand climbs upward, but the debt still comes due.",
+      "iconAssetPath": "Art/Items/items_sheet_no_numbers_alpha",
+      "rarity": "Legendary",
+      "allowedSources": ["Enemy", "Chest", "RoomClear", "Shop"],
+      "statModifier": { "maxHealthBonus": -4, "attackRateBonus": 0.50, "damageBonus": 2, "movementSpeedBonus": 1.5 }
     }
   ]
 }

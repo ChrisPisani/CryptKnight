@@ -99,7 +99,7 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void ChestSkipsKeyRewards()
+        public void ChestSkipsKeyItems()
         {
             GameManager.Instance.AddKeys(1);
             ChestFixture fixture = CreateChest();
@@ -107,6 +107,7 @@ namespace CryptKnight.Tests.EditMode
             fixture.Chest.TryOpen();
 
             Assert.That(fixture.SpawnedItem.ItemId, Is.Not.EqualTo("key"));
+            Assert.That(fixture.SpawnedItem.ItemId, Is.Not.EqualTo("skeleton_key"));
             Assert.That(fixture.SpawnedItem.ItemId, Is.EqualTo("test_reward"));
         }
 
@@ -185,9 +186,16 @@ namespace CryptKnight.Tests.EditMode
                 "Used by chest tests.",
                 new PlayerStatModifier(damageBonus: 1),
                 new[] { LootSourceType.Chest });
+            LootItemDefinition skeletonKey = new LootItemDefinition(
+                "skeleton_key",
+                "Skeleton Key",
+                "Also grants a key.",
+                new PlayerStatModifier(projectileBouncesBonus: 1),
+                new[] { LootSourceType.Chest },
+                keyAmount: 1);
 
             return new LootTableConfiguration(
-                new[] { key, item },
+                new[] { key, skeletonKey, item },
                 new Dictionary<LootSourceType, float>
                 {
                     { LootSourceType.Chest, 1f }

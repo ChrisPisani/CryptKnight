@@ -11,9 +11,13 @@ namespace CryptKnight.Data
 
             return
                 $"Health: {FormatHearts(runState.CurrentHealth)} / {FormatHearts(runState.MaxHealth)} hearts\n" +
-                $"Damage: {runState.PlayerStats.Damage}\n" +
+                $"Damage: {FormatNumber(runState.PlayerStats.Damage)}\n" +
                 $"Movement Speed: {FormatNumber(runState.PlayerStats.MovementSpeed)}\n" +
                 $"Attack Speed: {FormatNumber(runState.PlayerStats.AttackRate)}\n" +
+                $"Projectiles: {runState.PlayerStats.ProjectileCount}\n" +
+                $"Projectile Speed: {FormatNumber(runState.PlayerStats.ProjectileSpeed)}\n" +
+                $"Projectile Bounces: {runState.PlayerStats.ProjectileBounces}\n" +
+                $"Projectile Size: {FormatPercent(runState.PlayerStats.ProjectileSizeMultiplier)}\n" +
                 $"Keys: {runState.KeyCount}";
         }
 
@@ -25,9 +29,13 @@ namespace CryptKnight.Data
             }
 
             return
-                $"Damage: {runState.PlayerStats.Damage}\n" +
+                $"Damage: {FormatNumber(runState.PlayerStats.Damage)}\n" +
                 $"Movement Speed: {FormatNumber(runState.PlayerStats.MovementSpeed)}\n" +
-                $"Attack Speed: {FormatNumber(runState.PlayerStats.AttackRate)}";
+                $"Attack Speed: {FormatNumber(runState.PlayerStats.AttackRate)}\n" +
+                $"Projectiles: {runState.PlayerStats.ProjectileCount}\n" +
+                $"Projectile Speed: {FormatNumber(runState.PlayerStats.ProjectileSpeed)}\n" +
+                $"Projectile Bounces: {runState.PlayerStats.ProjectileBounces}\n" +
+                $"Projectile Size: {FormatPercent(runState.PlayerStats.ProjectileSizeMultiplier)}";
         }
 
         private static string FormatHearts(int halfHearts)
@@ -39,6 +47,11 @@ namespace CryptKnight.Data
         private static string FormatNumber(float value)
         {
             return value.ToString("0.##");
+        }
+
+        private static string FormatPercent(float multiplier)
+        {
+            return $"{multiplier * 100f:0.##}%";
         }
     }
 }

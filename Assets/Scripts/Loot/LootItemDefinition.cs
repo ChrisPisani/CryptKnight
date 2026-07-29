@@ -10,7 +10,15 @@ namespace CryptKnight.Loot
     {
         private readonly HashSet<LootSourceType> allowedSources;
 
-        public LootItemDefinition(string itemId, string displayName, string description, PlayerStatModifier statModifier, IEnumerable<LootSourceType> allowedSources, string iconAssetPath = "", int keyAmount = 0)
+        public LootItemDefinition(
+            string itemId,
+            string displayName,
+            string description,
+            PlayerStatModifier statModifier,
+            IEnumerable<LootSourceType> allowedSources,
+            string iconAssetPath = "",
+            int keyAmount = 0,
+            LootRarity rarity = LootRarity.Common)
         {
             if (string.IsNullOrWhiteSpace(itemId))
             {
@@ -22,6 +30,7 @@ namespace CryptKnight.Loot
             Description = description ?? string.Empty;
             IconAssetPath = iconAssetPath ?? string.Empty;
             KeyAmount = Math.Max(0, keyAmount);
+            Rarity = rarity;
             StatModifier = statModifier ?? new PlayerStatModifier();
             this.allowedSources = new HashSet<LootSourceType>(allowedSources ?? Enumerable.Empty<LootSourceType>());
         }
@@ -31,6 +40,7 @@ namespace CryptKnight.Loot
         public string Description { get; }
         public string IconAssetPath { get; }
         public int KeyAmount { get; }
+        public LootRarity Rarity { get; }
         public PlayerStatModifier StatModifier { get; }
         public IReadOnlyCollection<LootSourceType> AllowedSources => allowedSources;
 

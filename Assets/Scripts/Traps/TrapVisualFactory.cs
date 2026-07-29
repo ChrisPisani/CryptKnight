@@ -1,4 +1,5 @@
 using CryptKnight.Content;
+using CryptKnight.Dungeon;
 using CryptKnight.Loot;
 using UnityEngine;
 
@@ -59,7 +60,7 @@ namespace CryptKnight.Traps
                 scale.x *= -1f;
             }
 
-            CreateVisual(root.transform, sprite, fallbackColor, scale, 7);
+            CreateVisual(root.transform, sprite, fallbackColor, scale, DungeonRenderLayers.WallTrap);
             return root;
         }
 

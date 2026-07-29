@@ -108,7 +108,7 @@ namespace CryptKnight.Loot
 
             ApplyBobbing();
 
-            if (GameManager.Instance.IsGameplayPaused)
+            if (GameManager.Instance.IsGameplayPaused || GameplayInputGate.IsBlocked)
             {
                 return;
             }
@@ -392,6 +392,7 @@ namespace CryptKnight.Loot
             }
 
             promptText.text = $"Press E to pick up {itemDefinition.DisplayName}";
+            promptText.color = LootRarityPresentation.GetColor(itemDefinition.Rarity);
         }
 
         private void SetPromptVisible(bool isVisible)

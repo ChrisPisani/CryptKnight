@@ -254,10 +254,10 @@ namespace CryptKnight.Dungeon
         public EnemyKind Kind { get; }
         public Vector2 Position { get; private set; }
         public int MaxHealth { get; }
-        public int CurrentHealth { get; private set; }
+        public float CurrentHealth { get; private set; }
         public bool IsDefeated { get; private set; }
 
-        public void UpdateRuntime(Vector2 position, int currentHealth)
+        public void UpdateRuntime(Vector2 position, float currentHealth)
         {
             if (IsDefeated)
             {
@@ -265,12 +265,12 @@ namespace CryptKnight.Dungeon
             }
 
             Position = position;
-            CurrentHealth = Mathf.Clamp(currentHealth, 1, MaxHealth);
+            CurrentHealth = Mathf.Clamp(currentHealth, Mathf.Epsilon, MaxHealth);
         }
 
         public void MarkDefeated()
         {
-            CurrentHealth = 0;
+            CurrentHealth = 0f;
             IsDefeated = true;
         }
     }

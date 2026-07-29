@@ -88,6 +88,11 @@ namespace CryptKnight.UI
 
         private void Update()
         {
+            if (GameplayInputGate.IsBlocked)
+            {
+                return;
+            }
+
             GameRunState currentRun = GameManager.Instance.CurrentRun;
             if (currentRun == null || !currentRun.IsActive)
             {
@@ -107,7 +112,12 @@ namespace CryptKnight.UI
                 return;
             }
 
-            tooltipTitle.text = itemDefinition != null ? itemDefinition.DisplayName : "Unknown Item";
+            tooltipTitle.text = itemDefinition != null
+                ? $"{itemDefinition.DisplayName} ({LootRarityPresentation.GetLabel(itemDefinition.Rarity)})"
+                : "Unknown Item";
+            tooltipTitle.color = itemDefinition != null
+                ? LootRarityPresentation.GetColor(itemDefinition.Rarity)
+                : TextColor;
             tooltipBody.text = itemDefinition != null
                 ? $"{itemDefinition.Description}\n\n{LootItemEffectFormatter.FormatEffects(itemDefinition, quantity)}"
                 : "Item details are missing.";
@@ -162,14 +172,15 @@ namespace CryptKnight.UI
             CreateText(panel.transform, "Stats Heading", "Current Stats", 24, FontStyle.Bold, TextAnchor.MiddleLeft, TextColor, new Vector2(270f, 206f), new Vector2(360f, 40f));
             GameObject statsPanel = CreatePanel(panel.transform, "Stats Panel", new Vector2(360f, 190f), new Color(0.075f, 0.075f, 0.095f, 0.96f));
             statsPanel.GetComponent<RectTransform>().anchoredPosition = new Vector2(270f, 82f);
-            statsText = CreateText(statsPanel.transform, "Stats Text", string.Empty, 18, FontStyle.Normal, TextAnchor.UpperLeft, TextColor, new Vector2(0f, -14f), new Vector2(300f, 140f));
-            statsText.verticalOverflow = VerticalWrapMode.Overflow;
+            statsText = CreateText(statsPanel.transform, "Stats Text", string.Empty, 18, FontStyle.Normal, TextAnchor.UpperLeft, TextColor, new Vector2(0f, -12f), new Vector2(300f, 150f));
+            ConfigureBestFit(statsText, 13, 18);
 
             tooltipRoot = CreatePanel(panel.transform, "Item Tooltip", new Vector2(360f, 210f), new Color(0.075f, 0.075f, 0.095f, 0.96f));
             tooltipRoot.GetComponent<RectTransform>().anchoredPosition = new Vector2(270f, -128f);
             tooltipTitle = CreateText(tooltipRoot.transform, "Tooltip Title", string.Empty, 22, FontStyle.Bold, TextAnchor.MiddleLeft, TextColor, new Vector2(0f, 78f), new Vector2(300f, 42f));
+            ConfigureBestFit(tooltipTitle, 16, 22);
             tooltipBody = CreateText(tooltipRoot.transform, "Tooltip Body", string.Empty, 18, FontStyle.Normal, TextAnchor.UpperLeft, MutedTextColor, new Vector2(0f, -28f), new Vector2(300f, 140f));
-            tooltipBody.verticalOverflow = VerticalWrapMode.Overflow;
+            ConfigureBestFit(tooltipBody, 12, 18);
             tooltipRoot.SetActive(false);
 
             settingsRoot = CreateSettingsPanel(panel.transform);
@@ -245,6 +256,10 @@ namespace CryptKnight.UI
             GameObject slot = CreatePanel(itemListRoot, $"Item {itemStack.ItemId}", new Vector2(64f, 64f), ItemSlotColor);
             RectTransform slotRect = slot.GetComponent<RectTransform>();
             slotRect.anchoredPosition = slotPosition;
+            Outline rarityOutline = slot.AddComponent<Outline>();
+            rarityOutline.effectColor = LootRarityPresentation.GetColor(itemDefinition?.Rarity ?? LootRarity.Common);
+            rarityOutline.effectDistance = new Vector2(2f, -2f);
+            rarityOutline.useGraphicAlpha = true;
 
             GameObject iconObject = new GameObject("Icon");
             iconObject.transform.SetParent(slot.transform, false);
@@ -495,6 +510,14 @@ namespace CryptKnight.UI
             rectTransform.sizeDelta = size;
 
             return textComponent;
+        }
+
+        private static void ConfigureBestFit(Text text, int minimumSize, int maximumSize)
+        {
+            text.resizeTextForBestFit = true;
+            text.resizeTextMinSize = minimumSize;
+            text.resizeTextMaxSize = maximumSize;
+            text.verticalOverflow = VerticalWrapMode.Truncate;
         }
 
         private static void ApplyDungeonTextStyle(GameObject textObject, int fontSize)

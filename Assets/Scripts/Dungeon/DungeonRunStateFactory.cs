@@ -11,8 +11,15 @@ namespace CryptKnight.Dungeon
         private const string KeyItemId = "key";
         private const int ZombieMaxHealth = 5;
         private const int SpiderMaxHealth = 3;
-        private static readonly Vector2 StarterGiftKeyPosition = new Vector2(-1.15f, 1.15f);
-        private static readonly Vector2 StarterGiftChestPosition = new Vector2(1.15f, 1.15f);
+        private const int StarterGiftSalt = 0x53544746;
+        private static readonly Vector2 StarterGiftPosition = new Vector2(-1.15f, 1.15f);
+        private static readonly string[] StarterGiftItemIds =
+        {
+            "heart_container",
+            "damage_up",
+            "speed_up",
+            "attack_rate_up"
+        };
 
         public static DungeonRunState Create(int width, int height, int runSeed)
         {
@@ -100,13 +107,30 @@ namespace CryptKnight.Dungeon
 
         private static void AddStarterGift(DungeonRoomRuntimeState state, LootTableConfiguration configuration, int runSeed)
         {
-            LootItemDefinition keyItem = GetKeyItemDefinition(configuration);
-            if (keyItem != null)
+            List<LootItemDefinition> commonItems = new List<LootItemDefinition>();
+            for (int giftIndex = 0; giftIndex < StarterGiftItemIds.Length; giftIndex++)
             {
-                state.AddLoot(keyItem, StarterGiftKeyPosition);
+                for (int itemIndex = 0; itemIndex < configuration.Items.Count; itemIndex++)
+                {
+                    LootItemDefinition item = configuration.Items[itemIndex];
+                    if (item.ItemId == StarterGiftItemIds[giftIndex]
+                        && item.Rarity == LootRarity.Common
+                        && item.KeyAmount == 0)
+                    {
+                        commonItems.Add(item);
+                        break;
+                    }
+                }
             }
 
-            AddChest(state, StarterGiftChestPosition, runSeed);
+            if (commonItems.Count == 0)
+            {
+                return;
+            }
+
+            // Seed the gift independently so changing room generation does not change the starter reward.
+            System.Random random = new System.Random(runSeed ^ StarterGiftSalt);
+            state.AddLoot(commonItems[random.Next(commonItems.Count)], StarterGiftPosition);
         }
 
         private static void AddChest(DungeonRoomRuntimeState state, Vector2 position, int runSeed)

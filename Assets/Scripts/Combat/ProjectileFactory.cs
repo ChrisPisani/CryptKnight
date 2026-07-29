@@ -22,7 +22,7 @@ namespace CryptKnight.Combat
             Vector2 position,
             Vector2 direction,
             DamageableTarget targetType,
-            int damage,
+            float damage,
             float speed,
             float radius,
             float lifetimeSeconds,
@@ -30,7 +30,8 @@ namespace CryptKnight.Combat
             Transform parent,
             Rect? bounceBounds = null,
             int maxBounces = 0,
-            ProjectileVisualStyle visualStyle = ProjectileVisualStyle.Default)
+            ProjectileVisualStyle visualStyle = ProjectileVisualStyle.Default,
+            float visualScale = 1f)
         {
             Vector2 normalizedDirection = direction.sqrMagnitude > 0.001f ? direction.normalized : Vector2.right;
             GameObject projectileObject = new GameObject(objectName);
@@ -47,7 +48,10 @@ namespace CryptKnight.Combat
             float visualSize = visualStyle == ProjectileVisualStyle.TrapProjectile
                 ? TrapProjectileVisualLength
                 : ProjectileVisualDiameter;
-            SetProjectileVisualTransform(visualObject.transform, renderer, normalizedDirection, visualSize);
+            SetProjectileVisualTransform(
+                visualObject.transform,
+                renderer,
+                visualSize * Mathf.Max(0.1f, visualScale));
 
             CircleCollider2D collider = projectileObject.AddComponent<CircleCollider2D>();
             collider.radius = radius;
@@ -66,7 +70,6 @@ namespace CryptKnight.Combat
         private static void SetProjectileVisualTransform(
             Transform visualTransform,
             SpriteRenderer renderer,
-            Vector2 direction,
             float targetDiameter)
         {
             Sprite sprite = renderer.sprite;
@@ -79,10 +82,6 @@ namespace CryptKnight.Combat
             float longestSide = Mathf.Max(sprite.bounds.size.x, sprite.bounds.size.y);
             float scale = targetDiameter / longestSide;
             visualTransform.localScale = new Vector3(scale, scale, 1f);
-
-            // Imported projectile art is authored pointing right, so rotate it onto the shot direction.
-            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-            visualTransform.localRotation = Quaternion.Euler(0f, 0f, angle);
         }
 
         private static Color GetRendererColor(Sprite sprite, Color fallbackColor, ProjectileVisualStyle visualStyle)

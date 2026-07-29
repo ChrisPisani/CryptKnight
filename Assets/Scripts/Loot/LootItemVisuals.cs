@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using CryptKnight.Content;
 using UnityEngine;
 
@@ -10,16 +11,9 @@ namespace CryptKnight.Loot
         private const string KeyItemId = "key";
         private const string KeyAssetPath = "Art/Items/key";
 
-        private static readonly Dictionary<string, string> defaultAssetPathsByItemId = new Dictionary<string, string>
-        {
-            { "heart_container", "Art/Items/heart_container" },
-            { "damage_up", "Art/Items/damage_up" },
-            { "speed_up", "Art/Items/speed_up" },
-            { "attack_rate_up", "Art/Items/attack_rate_up" }
-        };
-
         private static readonly Dictionary<string, Sprite> circleSpritesByItemId = new Dictionary<string, Sprite>();
         private static readonly Dictionary<string, Sprite> itemSpritesByItemId = new Dictionary<string, Sprite>();
+        private static readonly Dictionary<string, string> configuredAssetPathsByItemId = new Dictionary<string, string>();
         private static Sprite squareSprite;
         private static Sprite keySprite;
 
@@ -54,8 +48,7 @@ namespace CryptKnight.Loot
 
         public static Sprite GetItemSprite(string itemId)
         {
-            string assetPath = defaultAssetPathsByItemId.TryGetValue(itemId ?? string.Empty, out string path) ? path : string.Empty;
-            return GetItemSprite(itemId, assetPath);
+            return GetItemSprite(itemId, GetConfiguredAssetPath(itemId));
         }
 
         private static Sprite GetItemSprite(string itemId, string iconAssetPath)
@@ -130,7 +123,7 @@ namespace CryptKnight.Loot
             string resourcePath = iconAssetPath;
             if (string.IsNullOrWhiteSpace(resourcePath))
             {
-                defaultAssetPathsByItemId.TryGetValue(safeItemId, out resourcePath);
+                resourcePath = GetConfiguredAssetPath(safeItemId);
             }
 
             Sprite sprite = RuntimeAssetLoader.LoadSprite(resourcePath, safeItemId)
@@ -142,6 +135,21 @@ namespace CryptKnight.Loot
             }
 
             return sprite;
+        }
+
+        private static string GetConfiguredAssetPath(string itemId)
+        {
+            string safeItemId = itemId ?? string.Empty;
+            if (configuredAssetPathsByItemId.TryGetValue(safeItemId, out string cachedPath))
+            {
+                return cachedPath;
+            }
+
+            LootItemDefinition itemDefinition = LootTableConfiguration.CreateDefault().Items
+                .FirstOrDefault(item => item.ItemId == safeItemId);
+            string assetPath = itemDefinition?.IconAssetPath ?? string.Empty;
+            configuredAssetPathsByItemId[safeItemId] = assetPath;
+            return assetPath;
         }
 
         private static Sprite CreateCircleSprite(Color color)

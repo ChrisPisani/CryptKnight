@@ -393,14 +393,14 @@ namespace CryptKnight.Tests.EditMode
     public sealed class TrapTestDamageable : MonoBehaviour, IDamageable
     {
         public DamageableTarget TargetType { get; private set; }
-        public int DamageTaken { get; private set; }
+        public float DamageTaken { get; private set; }
 
         public void Configure(DamageableTarget targetType)
         {
             TargetType = targetType;
         }
 
-        public void ApplyDamage(int damage)
+        public void ApplyDamage(float damage)
         {
             DamageTaken += damage;
         }

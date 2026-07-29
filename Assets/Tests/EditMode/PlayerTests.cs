@@ -1,3 +1,5 @@
+using CryptKnight.Application;
+using CryptKnight.Data;
 using CryptKnight.Player;
 using CryptKnight.Gameplay;
 using CryptKnight.Combat;
@@ -106,8 +108,94 @@ namespace CryptKnight.Tests.EditMode
             createdObjects.Add(player);
             PlayerAttackController attackController = player.AddComponent<PlayerAttackController>();
 
-            Assert.That(InvokePrivate<int>(attackController, "GetDamage"), Is.EqualTo(1));
+            Assert.That(InvokePrivate<float>(attackController, "GetDamage"), Is.EqualTo(1f));
             Assert.That(InvokePrivate<float>(attackController, "GetAttackCooldownSeconds"), Is.EqualTo(1f));
+        }
+
+        [Test]
+        public void MultipleShotsUseCenteredFan()
+        {
+            Vector2[] singleDirection = PlayerProjectileSpread.CreateDirections(Vector2.up, 0);
+            Vector2[] directions = PlayerProjectileSpread.CreateDirections(Vector2.right, 3);
+
+            Assert.That(singleDirection, Has.Length.EqualTo(1));
+            Assert.That(singleDirection[0], Is.EqualTo(Vector2.up));
+            Assert.That(directions, Has.Length.EqualTo(3));
+            Assert.That(Vector2.SignedAngle(Vector2.right, directions[0]), Is.EqualTo(-10f).Within(0.001f));
+            Assert.That(Vector2.SignedAngle(Vector2.right, directions[1]), Is.EqualTo(0f).Within(0.001f));
+            Assert.That(Vector2.SignedAngle(Vector2.right, directions[2]), Is.EqualTo(10f).Within(0.001f));
+
+            Vector2[] cappedDirections = PlayerProjectileSpread.CreateDirections(Vector2.zero, 10);
+            Assert.That(Vector2.SignedAngle(Vector2.right, cappedDirections[0]), Is.EqualTo(-30f).Within(0.001f));
+            Assert.That(Vector2.SignedAngle(Vector2.right, cappedDirections[9]), Is.EqualTo(30f).Within(0.001f));
+        }
+
+        [Test]
+        public void PlayerShotsUseRunStats()
+        {
+            GameManager.Instance.StartNewRun();
+            GameManager.Instance.CurrentRun.AddStatModifier(new PlayerStatModifier(
+                damageBonus: 1,
+                projectileCountBonus: 2,
+                projectileSpeedBonus: 2f,
+                projectileBouncesBonus: 1,
+                projectileSizeBonus: 0.5f));
+
+            GameObject room = new GameObject("Room");
+            GameObject player = new GameObject("Player");
+            createdObjects.Add(room);
+            player.transform.SetParent(room.transform, false);
+            PlayerAttackController attackController = player.AddComponent<PlayerAttackController>();
+
+            MethodInfo fireMethod = typeof(PlayerAttackController).GetMethod("Fire", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(fireMethod, Is.Not.Null);
+            fireMethod.Invoke(attackController, new object[] { Vector2.right });
+
+            ProjectileController[] projectiles = room.GetComponentsInChildren<ProjectileController>();
+            Assert.That(projectiles, Has.Length.EqualTo(3));
+            foreach (ProjectileController projectile in projectiles)
+            {
+                Assert.That(projectile.Damage, Is.EqualTo(2f));
+                Assert.That(projectile.BouncesRemaining, Is.EqualTo(1));
+                Assert.That(projectile.GetComponent<Rigidbody2D>().linearVelocity.magnitude, Is.EqualTo(10f).Within(0.001f));
+                Assert.That(projectile.GetComponent<CircleCollider2D>().radius, Is.EqualTo(0.2025f).Within(0.001f));
+            }
+        }
+
+        [Test]
+        public void AttackUpdateHandlesPauseAndMissingInput()
+        {
+            GameObject player = new GameObject("Player");
+            createdObjects.Add(player);
+            PlayerAttackController attackController = player.AddComponent<PlayerAttackController>();
+            GameManager.Instance.StartNewRun();
+
+            MethodInfo awakeMethod = typeof(PlayerAttackController).GetMethod("Awake", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo updateMethod = typeof(PlayerAttackController).GetMethod("Update", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo aimMethod = typeof(PlayerAttackController).GetMethod("GetAimDirection", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(awakeMethod, Is.Not.Null);
+            Assert.That(updateMethod, Is.Not.Null);
+            Assert.That(aimMethod, Is.Not.Null);
+
+            awakeMethod.Invoke(attackController, null);
+            Vector2 initialAim = (Vector2)aimMethod.Invoke(attackController, null);
+            Assert.That(float.IsNaN(initialAim.x), Is.False);
+            Assert.That(float.IsNaN(initialAim.y), Is.False);
+
+            GameManager.Instance.SetGameplayPaused(true);
+            updateMethod.Invoke(attackController, null);
+            GameManager.Instance.SetGameplayPaused(false);
+            updateMethod.Invoke(attackController, null);
+
+            GameObject cameraObject = new GameObject("Main Camera");
+            createdObjects.Add(cameraObject);
+            cameraObject.tag = "MainCamera";
+            Camera camera = cameraObject.AddComponent<Camera>();
+            camera.transform.position = new Vector3(0f, 0f, -10f);
+
+            Vector2 cameraAim = (Vector2)aimMethod.Invoke(attackController, null);
+            Assert.That(float.IsNaN(cameraAim.x), Is.False);
+            Assert.That(float.IsNaN(cameraAim.y), Is.False);
         }
 
         [Test]
@@ -119,6 +207,19 @@ namespace CryptKnight.Tests.EditMode
             PlayerDamageReceiver receiver = player.AddComponent<PlayerDamageReceiver>();
 
             Assert.That(receiver.TargetType, Is.EqualTo(DamageableTarget.Player));
+        }
+
+        [Test]
+        public void PlayerDamageRoundsUpToHalfHeart()
+        {
+            GameManager.Instance.StartNewRun();
+            GameObject player = new GameObject("Player");
+            createdObjects.Add(player);
+            PlayerDamageReceiver receiver = player.AddComponent<PlayerDamageReceiver>();
+
+            receiver.ApplyDamage(0.5f);
+
+            Assert.That(GameManager.Instance.CurrentRun.CurrentHealth, Is.EqualTo(5));
         }
 
         [Test]

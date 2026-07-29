@@ -1,6 +1,8 @@
 using CryptKnight.Application;
 using CryptKnight.Audio;
 using CryptKnight.Combat;
+using CryptKnight.Data;
+using CryptKnight.Gameplay;
 using UnityEngine;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -10,9 +12,9 @@ namespace CryptKnight.Player
 {
     public sealed class PlayerAttackController : MonoBehaviour
     {
-        private const float ProjectileSpeed = 8f;
         private const float ProjectileRadius = 0.135f;
         private const float ProjectileLifetimeSeconds = 5f;
+        private const float LifetimePerBounceSeconds = 2f;
 
         private readonly AttackCooldown cooldown = new AttackCooldown();
         private PlayerIdleAnimator spriteAnimator;
@@ -24,7 +26,7 @@ namespace CryptKnight.Player
 
         private void Update()
         {
-            if (GameManager.Instance.IsGameplayPaused)
+            if (GameManager.Instance.IsGameplayPaused || GameplayInputGate.IsBlocked)
             {
                 return;
             }
@@ -47,31 +49,61 @@ namespace CryptKnight.Player
 
         private void Fire(Vector2 direction)
         {
-            Vector2 spawnPosition = (Vector2)transform.position + direction * 0.75f;
             spriteAnimator?.PlayAttack(direction);
             GameSfxPlayer.PlaySwordAttack();
 
-            ProjectileFactory.CreateCircleProjectile(
-                "Player Projectile",
-                spawnPosition,
-                direction,
-                DamageableTarget.Enemy,
-                GetDamage(),
-                ProjectileSpeed,
-                ProjectileRadius,
-                ProjectileLifetimeSeconds,
-                new Color(0.25f, 0.72f, 1f, 1f),
-                transform.parent);
+            PlayerRuntimeStats stats = GetPlayerStats();
+            Vector2[] shotDirections = PlayerProjectileSpread.CreateDirections(direction, stats.ProjectileCount);
+            float radius = ProjectileRadius * stats.ProjectileSizeMultiplier;
+            Rect bounceBounds = InsetBounds(DungeonRoomGeometry.PlayableBounds, radius);
+            float lifetimeSeconds = ProjectileLifetimeSeconds + stats.ProjectileBounces * LifetimePerBounceSeconds;
+
+            for (int i = 0; i < shotDirections.Length; i++)
+            {
+                Vector2 shotDirection = shotDirections[i];
+                Vector2 spawnPosition = (Vector2)transform.position + shotDirection * 0.75f;
+                ProjectileFactory.CreateCircleProjectile(
+                    "Player Projectile",
+                    spawnPosition,
+                    shotDirection,
+                    DamageableTarget.Enemy,
+                    stats.Damage,
+                    stats.ProjectileSpeed,
+                    radius,
+                    lifetimeSeconds,
+                    new Color(0.25f, 0.72f, 1f, 1f),
+                    transform.parent,
+                    stats.ProjectileBounces > 0 ? bounceBounds : null,
+                    stats.ProjectileBounces,
+                    ProjectileVisualStyle.Default,
+                    stats.ProjectileSizeMultiplier);
+            }
         }
 
-        private int GetDamage()
+        private float GetDamage()
         {
-            return GameManager.Instance.CurrentRun?.PlayerStats.Damage ?? 1;
+            return GetPlayerStats().Damage;
         }
 
         private float GetAttackCooldownSeconds()
         {
-            return GameManager.Instance.CurrentRun?.PlayerStats.AttackCooldownSeconds ?? 1f;
+            return GetPlayerStats().AttackCooldownSeconds;
+        }
+
+        private static PlayerRuntimeStats GetPlayerStats()
+        {
+            return GameManager.Instance.CurrentRun?.PlayerStats
+                ?? new PlayerRuntimeStats(PlayerBaseStats.CreateDefault());
+        }
+
+        private static Rect InsetBounds(Rect bounds, float padding)
+        {
+            float safePadding = Mathf.Max(0f, padding);
+            return Rect.MinMaxRect(
+                bounds.xMin + safePadding,
+                bounds.yMin + safePadding,
+                bounds.xMax - safePadding,
+                bounds.yMax - safePadding);
         }
 
         private Vector2 GetAimDirection()

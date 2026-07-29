@@ -75,17 +75,29 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void StatModifiersApply()
+        public void ProjectileStatsStack()
         {
             GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, 6);
 
-            runState.AddStatModifier(new PlayerStatModifier(maxHealthBonus: 2, damageBonus: 1, movementSpeedBonus: 1.5f, attackRateBonus: 0.5f));
+            runState.AddStatModifier(new PlayerStatModifier(
+                maxHealthBonus: 2,
+                damageBonus: 1,
+                movementSpeedBonus: 1.5f,
+                attackRateBonus: 0.5f,
+                projectileCountBonus: 2,
+                projectileSpeedBonus: 1.5f,
+                projectileBouncesBonus: 1,
+                projectileSizeBonus: 0.25f));
 
             Assert.That(runState.MaxHealth, Is.EqualTo(8));
             Assert.That(runState.CurrentHealth, Is.EqualTo(8));
-            Assert.That(runState.PlayerStats.Damage, Is.EqualTo(2));
+            Assert.That(runState.PlayerStats.Damage, Is.EqualTo(2f));
             Assert.That(runState.PlayerStats.MovementSpeed, Is.EqualTo(6.5f));
             Assert.That(runState.PlayerStats.AttackRate, Is.EqualTo(1.5f));
+            Assert.That(runState.PlayerStats.ProjectileCount, Is.EqualTo(3));
+            Assert.That(runState.PlayerStats.ProjectileSpeed, Is.EqualTo(9.5f));
+            Assert.That(runState.PlayerStats.ProjectileBounces, Is.EqualTo(1));
+            Assert.That(runState.PlayerStats.ProjectileSizeMultiplier, Is.EqualTo(1.25f));
             Assert.That(runState.PlayerStats.AttackCooldownSeconds, Is.EqualTo(1f / 1.5f).Within(0.001f));
         }
 
@@ -106,7 +118,14 @@ namespace CryptKnight.Tests.EditMode
             GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, 6);
             runState.ApplyDamage(1);
             runState.AddKeys(2);
-            runState.AddStatModifier(new PlayerStatModifier(damageBonus: 1, movementSpeedBonus: 0.5f, attackRateBonus: 0.2f));
+            runState.AddStatModifier(new PlayerStatModifier(
+                damageBonus: 1,
+                movementSpeedBonus: 0.5f,
+                attackRateBonus: 0.2f,
+                projectileCountBonus: 1,
+                projectileSpeedBonus: 2f,
+                projectileBouncesBonus: 1,
+                projectileSizeBonus: 0.25f));
 
             string summary = PlayerStatSummaryFormatter.Format(runState);
 
@@ -114,6 +133,10 @@ namespace CryptKnight.Tests.EditMode
             Assert.That(summary, Does.Contain("Damage: 2"));
             Assert.That(summary, Does.Contain("Movement Speed: 5.5"));
             Assert.That(summary, Does.Contain("Attack Speed: 1.2"));
+            Assert.That(summary, Does.Contain("Projectiles: 2"));
+            Assert.That(summary, Does.Contain("Projectile Speed: 10"));
+            Assert.That(summary, Does.Contain("Projectile Bounces: 1"));
+            Assert.That(summary, Does.Contain("Projectile Size: 125%"));
             Assert.That(summary, Does.Contain("Keys: 2"));
         }
 
@@ -122,7 +145,14 @@ namespace CryptKnight.Tests.EditMode
         {
             GameRunState runState = GameRunState.CreateNewRun(1, 12345, 4, 4, 6);
             runState.AddKeys(2);
-            runState.AddStatModifier(new PlayerStatModifier(damageBonus: 1, movementSpeedBonus: 0.5f, attackRateBonus: 0.2f));
+            runState.AddStatModifier(new PlayerStatModifier(
+                damageBonus: 1,
+                movementSpeedBonus: 0.5f,
+                attackRateBonus: 0.2f,
+                projectileCountBonus: 1,
+                projectileSpeedBonus: 2f,
+                projectileBouncesBonus: 1,
+                projectileSizeBonus: 0.25f));
 
             string summary = PlayerStatSummaryFormatter.FormatStatsOnly(runState);
 
@@ -131,10 +161,14 @@ namespace CryptKnight.Tests.EditMode
             Assert.That(summary, Does.Contain("Damage: 2"));
             Assert.That(summary, Does.Contain("Movement Speed: 5.5"));
             Assert.That(summary, Does.Contain("Attack Speed: 1.2"));
+            Assert.That(summary, Does.Contain("Projectiles: 2"));
+            Assert.That(summary, Does.Contain("Projectile Speed: 10"));
+            Assert.That(summary, Does.Contain("Projectile Bounces: 1"));
+            Assert.That(summary, Does.Contain("Projectile Size: 125%"));
         }
 
         [Test]
-        public void DefaultStatsMatchStartingPlayer()
+        public void DefaultProjectileStatsMatch()
         {
             PlayerBaseStats stats = PlayerBaseStats.CreateDefault();
 
@@ -142,6 +176,10 @@ namespace CryptKnight.Tests.EditMode
             Assert.That(stats.Damage, Is.EqualTo(1));
             Assert.That(stats.MovementSpeed, Is.EqualTo(5f));
             Assert.That(stats.AttackRate, Is.EqualTo(1f));
+            Assert.That(stats.ProjectileCount, Is.EqualTo(1));
+            Assert.That(stats.ProjectileSpeed, Is.EqualTo(8f));
+            Assert.That(stats.ProjectileBounces, Is.EqualTo(0));
+            Assert.That(stats.ProjectileSizeMultiplier, Is.EqualTo(1f));
         }
 
         [Test]
@@ -236,16 +274,28 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void StatsHaveMinimumValues()
+        public void ProjectileStatsHaveMinimums()
         {
-            PlayerRuntimeStats stats = new PlayerRuntimeStats(new PlayerBaseStats(2, 1, 1f, 1f));
+            PlayerRuntimeStats stats = new PlayerRuntimeStats(new PlayerBaseStats(2, 1, 1f, 1f, 1, 1f, 0, 1f));
 
-            stats.AddModifier(new PlayerStatModifier(maxHealthBonus: -99, damageBonus: -99, movementSpeedBonus: -99f, attackRateBonus: -99f));
+            stats.AddModifier(new PlayerStatModifier(
+                maxHealthBonus: -99,
+                damageBonus: -99,
+                movementSpeedBonus: -99f,
+                attackRateBonus: -99f,
+                projectileCountBonus: -99,
+                projectileSpeedBonus: -99f,
+                projectileBouncesBonus: -99,
+                projectileSizeBonus: -99f));
 
             Assert.That(stats.MaxHealth, Is.EqualTo(1));
-            Assert.That(stats.Damage, Is.EqualTo(0));
+            Assert.That(stats.Damage, Is.EqualTo(0f));
             Assert.That(stats.MovementSpeed, Is.EqualTo(0f));
             Assert.That(stats.AttackRate, Is.EqualTo(0.01f));
+            Assert.That(stats.ProjectileCount, Is.EqualTo(1));
+            Assert.That(stats.ProjectileSpeed, Is.EqualTo(0.1f));
+            Assert.That(stats.ProjectileBounces, Is.EqualTo(0));
+            Assert.That(stats.ProjectileSizeMultiplier, Is.EqualTo(0.25f));
             Assert.That(stats.AttackCooldownSeconds, Is.EqualTo(100f).Within(0.001f));
         }
 

@@ -120,7 +120,7 @@ namespace CryptKnight.Tests.EditMode
             GameObject enemy = CreateObject("Tracked Enemy");
             enemy.transform.position = new Vector2(2f, -1f);
             EnemyHealth health = enemy.AddComponent<EnemyHealth>();
-            health.Initialize(5, 3);
+            health.Initialize(5, 0.5f);
             EnemyRoomStateTracker tracker = enemy.AddComponent<EnemyRoomStateTracker>();
             tracker.Initialize(roomEnemy, health);
 
@@ -131,7 +131,7 @@ namespace CryptKnight.Tests.EditMode
             onDisable.Invoke(tracker, null);
 
             Assert.That(roomEnemy.Position, Is.EqualTo(new Vector2(2f, -1f)));
-            Assert.That(roomEnemy.CurrentHealth, Is.EqualTo(3));
+            Assert.That(roomEnemy.CurrentHealth, Is.EqualTo(0.5f));
         }
 
         [Test]

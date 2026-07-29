@@ -22,7 +22,6 @@ namespace CryptKnight.Loot
         private const float FadeDurationSeconds = 1.25f;
         private const int ChestSortingOrder = 5;
         private const int PromptSortingOrder = 31;
-        private const string KeyItemId = "key";
         private const string ChestSpriteSheetPath = "Art/Items/treasure_chest_opening_strip_alpha";
         private static readonly Color ClosedColor = new Color(0.48f, 0.27f, 0.08f, 1f);
         private static readonly Color OpenColor = new Color(0.25f, 0.18f, 0.12f, 1f);
@@ -84,7 +83,7 @@ namespace CryptKnight.Loot
                 noKeyFeedbackEndsAt = 0f;
             }
 
-            if (GameManager.Instance.IsGameplayPaused)
+            if (GameManager.Instance.IsGameplayPaused || GameplayInputGate.IsBlocked)
             {
                 return;
             }
@@ -144,7 +143,7 @@ namespace CryptKnight.Loot
 
             EnsureLootSystem();
             // Chests use the normal chest loot pool, but cannot drop keys
-            LootDropResult result = lootSystem.RollDrop(LootSourceType.Chest, random, item => item.ItemId != KeyItemId);
+            LootDropResult result = lootSystem.RollDrop(LootSourceType.Chest, random, item => item.KeyAmount == 0);
             if (result.HasDrop)
             {
                 spawnReward?.Invoke(result.Item, (Vector2)transform.position + RewardSpawnOffset);

@@ -11,21 +11,37 @@ namespace CryptKnight.Loot
         private const string DefaultResourcePath = "Loot/loot_table";
 
         private readonly Dictionary<LootSourceType, float> sourceDropRates;
+        private readonly Dictionary<LootSourceType, LootRarityWeights> sourceRarityWeights;
         private readonly List<LootItemDefinition> items;
 
-        public LootTableConfiguration(IEnumerable<LootItemDefinition> items, IReadOnlyDictionary<LootSourceType, float> sourceDropRates)
+        public LootTableConfiguration(
+            IEnumerable<LootItemDefinition> items,
+            IReadOnlyDictionary<LootSourceType, float> sourceDropRates,
+            IReadOnlyDictionary<LootSourceType, LootRarityWeights> rarityWeights = null)
         {
             this.items = new List<LootItemDefinition>(items ?? Enumerable.Empty<LootItemDefinition>());
             this.sourceDropRates = new Dictionary<LootSourceType, float>();
+            sourceRarityWeights = new Dictionary<LootSourceType, LootRarityWeights>();
 
-            if (sourceDropRates == null)
+            if (sourceDropRates != null)
+            {
+                foreach (KeyValuePair<LootSourceType, float> sourceRate in sourceDropRates)
+                {
+                    this.sourceDropRates[sourceRate.Key] = ClampChance(sourceRate.Value);
+                }
+            }
+
+            if (rarityWeights == null)
             {
                 return;
             }
 
-            foreach (KeyValuePair<LootSourceType, float> sourceRate in sourceDropRates)
+            foreach (KeyValuePair<LootSourceType, LootRarityWeights> sourceWeights in rarityWeights)
             {
-                this.sourceDropRates[sourceRate.Key] = ClampChance(sourceRate.Value);
+                if (sourceWeights.Value != null)
+                {
+                    sourceRarityWeights[sourceWeights.Key] = sourceWeights.Value;
+                }
             }
         }
 
@@ -39,6 +55,13 @@ namespace CryptKnight.Loot
         public IReadOnlyList<LootItemDefinition> GetItemsForSource(LootSourceType sourceType)
         {
             return items.Where(item => item.CanAppearFrom(sourceType)).ToArray();
+        }
+
+        public LootRarityWeights GetRarityWeights(LootSourceType sourceType)
+        {
+            return sourceRarityWeights.TryGetValue(sourceType, out LootRarityWeights weights)
+                ? weights
+                : LootRarityWeights.CommonOnly;
         }
 
         public static LootTableConfiguration CreateDefault()
@@ -72,6 +95,22 @@ namespace CryptKnight.Loot
                 }
             }
 
+            Dictionary<LootSourceType, LootRarityWeights> rarityWeights = new Dictionary<LootSourceType, LootRarityWeights>();
+            if (configFile?.sourceRarityWeights != null)
+            {
+                foreach (LootSourceRarityWeightsConfig sourceWeights in configFile.sourceRarityWeights)
+                {
+                    if (TryParseSource(sourceWeights.source, out LootSourceType sourceType))
+                    {
+                        rarityWeights[sourceType] = new LootRarityWeights(
+                            sourceWeights.common,
+                            sourceWeights.uncommon,
+                            sourceWeights.rare,
+                            sourceWeights.legendary);
+                    }
+                }
+            }
+
             List<LootItemDefinition> configuredItems = new List<LootItemDefinition>();
             if (configFile?.items != null)
             {
@@ -89,11 +128,12 @@ namespace CryptKnight.Loot
                         CreateStatModifier(item.statModifier),
                         ParseSources(item.allowedSources),
                         GetConfiguredIconPath(item),
-                        item.keyAmount));
+                        item.keyAmount,
+                        ParseRarity(item.rarity)));
                 }
             }
 
-            return new LootTableConfiguration(configuredItems, dropRates);
+            return new LootTableConfiguration(configuredItems, dropRates, rarityWeights);
         }
 
         private static LootTableConfiguration CreateBuiltInFallback()
@@ -109,18 +149,25 @@ namespace CryptKnight.Loot
             return new LootTableConfiguration(
                 new[]
                 {
-                    CreateFallbackItem("heart_container", "Monster Heart", "Gain 1 max heart.", new PlayerStatModifier(maxHealthBonus: 2), allSources),
-                    CreateFallbackItem("damage_up", "Spinach", "Increase attack damage by 1.", new PlayerStatModifier(damageBonus: 1), allSources),
-                    CreateFallbackItem("speed_up", "Bottled Lightning", "Increase movement speed by 1.", new PlayerStatModifier(movementSpeedBonus: 1f), allSources),
-                    CreateFallbackItem("attack_rate_up", "Chili Pepper", "Increase attack rate by 0.2 shots per second.", new PlayerStatModifier(attackRateBonus: 0.2f), allSources),
-                    CreateFallbackItem("key", "Key", "Gain 1 key.", new PlayerStatModifier(), allSources, 1)
+                    CreateFallbackItem("heart_container", "Monster Heart", "It still beats with stubborn, impossible life.", new PlayerStatModifier(maxHealthBonus: 2), allSources),
+                    CreateFallbackItem("damage_up", "Spinach", "A dented tin stamped with a hero no one remembers.", new PlayerStatModifier(damageBonus: 1), allSources),
+                    CreateFallbackItem("speed_up", "Bottled Lightning", "Stormlight claws at the glass, desperate to escape.", new PlayerStatModifier(movementSpeedBonus: 1f), allSources),
+                    CreateFallbackItem("attack_rate_up", "Chili Pepper", "Even the dead keep a safe distance from its heat.", new PlayerStatModifier(attackRateBonus: 0.2f), allSources),
+                    CreateFallbackItem("key", "Key", "Cold iron teeth made for a lock deeper in the crypt.", new PlayerStatModifier(), allSources, 1)
                 },
                 new Dictionary<LootSourceType, float>
                 {
-                    { LootSourceType.Enemy, 0.10f },
+                    { LootSourceType.Enemy, 0.08f },
                     { LootSourceType.Chest, 1f },
                     { LootSourceType.RoomClear, 0.20f },
                     { LootSourceType.Shop, 1f }
+                },
+                new Dictionary<LootSourceType, LootRarityWeights>
+                {
+                    { LootSourceType.Enemy, new LootRarityWeights(0.60f, 0.27f, 0.10f, 0.03f) },
+                    { LootSourceType.RoomClear, new LootRarityWeights(0.60f, 0.27f, 0.10f, 0.03f) },
+                    { LootSourceType.Chest, new LootRarityWeights(0.40f, 0.35f, 0.20f, 0.05f) },
+                    { LootSourceType.Shop, new LootRarityWeights(0.40f, 0.35f, 0.20f, 0.05f) }
                 });
         }
 
@@ -133,7 +180,8 @@ namespace CryptKnight.Loot
                 statModifier,
                 allowedSources,
                 $"Art/Items/{itemId}",
-                keyAmount);
+                keyAmount,
+                LootRarity.Common);
         }
 
         private static float ClampChance(float chance)
@@ -152,7 +200,11 @@ namespace CryptKnight.Loot
                 maxHealthBonus: modifier.maxHealthBonus,
                 damageBonus: modifier.damageBonus,
                 movementSpeedBonus: modifier.movementSpeedBonus,
-                attackRateBonus: modifier.attackRateBonus);
+                attackRateBonus: modifier.attackRateBonus,
+                projectileCountBonus: modifier.projectileCountBonus,
+                projectileSpeedBonus: modifier.projectileSpeedBonus,
+                projectileBouncesBonus: modifier.projectileBouncesBonus,
+                projectileSizeBonus: modifier.projectileSizeBonus);
         }
 
         private static IEnumerable<LootSourceType> ParseSources(IEnumerable<string> sourceNames)
@@ -176,6 +228,13 @@ namespace CryptKnight.Loot
             return Enum.TryParse(sourceName, true, out sourceType);
         }
 
+        private static LootRarity ParseRarity(string rarityName)
+        {
+            return Enum.TryParse(rarityName, true, out LootRarity rarity)
+                ? rarity
+                : LootRarity.Common;
+        }
+
         private static string GetConfiguredIconPath(LootItemConfig item)
         {
             if (!string.IsNullOrWhiteSpace(item.iconAssetPath))
@@ -190,6 +249,7 @@ namespace CryptKnight.Loot
         private sealed class LootTableConfigFile
         {
             public LootSourceDropRateConfig[] sourceDropRates = Array.Empty<LootSourceDropRateConfig>();
+            public LootSourceRarityWeightsConfig[] sourceRarityWeights = Array.Empty<LootSourceRarityWeightsConfig>();
             public LootItemConfig[] items = Array.Empty<LootItemConfig>();
         }
 
@@ -201,6 +261,16 @@ namespace CryptKnight.Loot
         }
 
         [Serializable]
+        private sealed class LootSourceRarityWeightsConfig
+        {
+            public string source = string.Empty;
+            public float common = 0f;
+            public float uncommon = 0f;
+            public float rare = 0f;
+            public float legendary = 0f;
+        }
+
+        [Serializable]
         private sealed class LootItemConfig
         {
             public string itemId = string.Empty;
@@ -209,6 +279,7 @@ namespace CryptKnight.Loot
             public string iconAssetPath = string.Empty;
             public string iconResourcePath = string.Empty;
             public int keyAmount = 0;
+            public string rarity = string.Empty;
             public string[] allowedSources = Array.Empty<string>();
             public PlayerStatModifierConfig statModifier = new PlayerStatModifierConfig();
         }
@@ -217,9 +288,13 @@ namespace CryptKnight.Loot
         private sealed class PlayerStatModifierConfig
         {
             public int maxHealthBonus = 0;
-            public int damageBonus = 0;
+            public float damageBonus = 0f;
             public float movementSpeedBonus = 0f;
             public float attackRateBonus = 0f;
+            public int projectileCountBonus = 0;
+            public float projectileSpeedBonus = 0f;
+            public int projectileBouncesBonus = 0;
+            public float projectileSizeBonus = 0f;
         }
     }
 }

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using CryptKnight.Content;
 using CryptKnight.Dungeon;
 using CryptKnight.Gameplay;
+using CryptKnight.Traps;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -110,6 +111,58 @@ namespace CryptKnight.Tests.EditMode
             Assert.That(root.transform.Find("Door Frame West"), Is.Not.Null);
             Assert.That(root.transform.Find("Door Archway North"), Is.Not.Null);
             Assert.That(root.transform.Find("Door Archway East"), Is.Null);
+        }
+
+        [Test]
+        public void DoorFramesRenderAboveWallTraps()
+        {
+            GameObject root = CreateObject("Door Layer Test");
+            DungeonRoom room = new DungeonRoom(Vector2Int.zero, RoomType.Trap);
+            DungeonRoom east = new DungeonRoom(Vector2Int.right, RoomType.Enemy);
+            room.Connect(RoomDirection.East, east.GridPosition);
+            DungeonLayout layout = new DungeonLayout(
+                2,
+                1,
+                new[] { room, east },
+                room.GridPosition,
+                east.GridPosition);
+
+            new DungeonRoomEnvironmentBuilder().Build(root.transform, room, layout, _ => { });
+            GameObject trap = TrapVisualFactory.CreateWall(
+                "Overlapping Wall Trap",
+                root.transform,
+                DungeonRoomGeometry.GetDoorPosition(RoomDirection.East),
+                Vector2.left,
+                Color.yellow);
+            SpriteRenderer doorRenderer = root.transform.Find("Door Frame East").GetComponent<SpriteRenderer>();
+            SpriteRenderer trapRenderer = trap.GetComponentInChildren<SpriteRenderer>();
+
+            Assert.That(trapRenderer.sortingOrder, Is.EqualTo(DungeonRenderLayers.WallTrap));
+            Assert.That(doorRenderer.sortingOrder, Is.EqualTo(DungeonRenderLayers.DoorFrame));
+            Assert.That(doorRenderer.sortingOrder, Is.GreaterThan(trapRenderer.sortingOrder));
+        }
+
+        [Test]
+        public void FinalArchwayRendersAboveDoorFrames()
+        {
+            GameObject root = CreateObject("Final Door Layer Test");
+            DungeonRoom room = new DungeonRoom(Vector2Int.zero, RoomType.Enemy);
+            DungeonRoom final = new DungeonRoom(Vector2Int.up, RoomType.Final);
+            room.Connect(RoomDirection.North, final.GridPosition);
+            DungeonLayout layout = new DungeonLayout(
+                1,
+                2,
+                new[] { room, final },
+                room.GridPosition,
+                final.GridPosition);
+
+            new DungeonRoomEnvironmentBuilder().Build(root.transform, room, layout, _ => { });
+            SpriteRenderer frameRenderer = root.transform.Find("Door Frame North").GetComponent<SpriteRenderer>();
+            SpriteRenderer archwayRenderer = root.transform.Find("Door Archway North").GetComponent<SpriteRenderer>();
+
+            Assert.That(frameRenderer.sortingOrder, Is.EqualTo(DungeonRenderLayers.DoorFrame));
+            Assert.That(archwayRenderer.sortingOrder, Is.EqualTo(DungeonRenderLayers.FinalDoorArchway));
+            Assert.That(archwayRenderer.sortingOrder, Is.GreaterThan(frameRenderer.sortingOrder));
         }
 
         private GameObject CreateObject(string name)

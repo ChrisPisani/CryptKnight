@@ -10,7 +10,7 @@ namespace CryptKnight.Enemies
         private int maxHealth = 3;
 
         public DamageableTarget TargetType => DamageableTarget.Enemy;
-        public int CurrentHealth { get; private set; }
+        public float CurrentHealth { get; private set; }
         // update room state and roll defeat loot before the enemy is destroyed
         public event Action<EnemyHealth> Died;
 
@@ -24,21 +24,21 @@ namespace CryptKnight.Enemies
             Initialize(maximumHealth, maximumHealth);
         }
 
-        public void Initialize(int maximumHealth, int currentHealth)
+        public void Initialize(int maximumHealth, float currentHealth)
         {
             maxHealth = Mathf.Max(1, maximumHealth);
-            CurrentHealth = Mathf.Clamp(currentHealth, 1, maxHealth);
+            CurrentHealth = Mathf.Clamp(currentHealth, Mathf.Epsilon, maxHealth);
         }
 
-        public void ApplyDamage(int damage)
+        public void ApplyDamage(float damage)
         {
-            if (damage <= 0 || CurrentHealth <= 0)
+            if (damage <= 0f || CurrentHealth <= 0f)
             {
                 return;
             }
 
-            CurrentHealth = Mathf.Max(0, CurrentHealth - damage);
-            if (CurrentHealth == 0)
+            CurrentHealth = Mathf.Max(0f, CurrentHealth - damage);
+            if (CurrentHealth <= 0f)
             {
                 Died?.Invoke(this);
                 Destroy(gameObject);

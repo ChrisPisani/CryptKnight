@@ -128,14 +128,39 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void StarterRoomGetsKeyAndChest()
+        public void StarterGetsOneCommonItem()
         {
             DungeonRunState dungeon = DungeonRunStateFactory.Create(4, 4, 12345);
             DungeonRoomRuntimeState roomState = dungeon.GetRoomState(dungeon.Layout.StartPosition);
 
             Assert.That(roomState.Loot, Has.Count.EqualTo(1));
-            Assert.That(roomState.Loot.Single().ItemDefinition.ItemId, Is.EqualTo("key"));
-            Assert.That(roomState.Chests, Has.Count.EqualTo(1));
+            Assert.That(roomState.Loot.Single().ItemDefinition.Rarity, Is.EqualTo(LootRarity.Common));
+            Assert.That(roomState.Loot.Single().ItemDefinition.KeyAmount, Is.Zero);
+            Assert.That(
+                new[] { "heart_container", "damage_up", "speed_up", "attack_rate_up" },
+                Does.Contain(roomState.Loot.Single().ItemDefinition.ItemId));
+        }
+
+        [Test]
+        public void StarterHasNoKeyOrChest()
+        {
+            DungeonRunState dungeon = DungeonRunStateFactory.Create(4, 4, 12345);
+            DungeonRoomRuntimeState roomState = dungeon.GetRoomState(dungeon.Layout.StartPosition);
+
+            Assert.That(roomState.Loot.Single().ItemDefinition.ItemId, Is.Not.EqualTo("key"));
+            Assert.That(roomState.Chests, Is.Empty);
+        }
+
+        [Test]
+        public void StarterGiftIsStable()
+        {
+            DungeonRunState first = DungeonRunStateFactory.Create(4, 4, 24680);
+            DungeonRunState second = DungeonRunStateFactory.Create(4, 4, 24680);
+            RoomLootInstance firstGift = first.GetRoomState(first.Layout.StartPosition).Loot.Single();
+            RoomLootInstance secondGift = second.GetRoomState(second.Layout.StartPosition).Loot.Single();
+
+            Assert.That(secondGift.ItemDefinition.ItemId, Is.EqualTo(firstGift.ItemDefinition.ItemId));
+            Assert.That(secondGift.Position, Is.EqualTo(firstGift.Position));
         }
 
         [Test]
@@ -236,21 +261,32 @@ namespace CryptKnight.Tests.EditMode
             DungeonRoomRuntimeState roomState = new DungeonRoomRuntimeState(Vector2Int.zero, RoomType.Enemy);
             RoomEnemyInstance enemy = roomState.AddEnemy(CryptKnight.Enemies.EnemyKind.Zombie, Vector2.zero, 5);
 
-            enemy.UpdateRuntime(new Vector2(2f, -1f), 3);
+            enemy.UpdateRuntime(new Vector2(2f, -1f), 0.5f);
 
             Assert.That(enemy.Position, Is.EqualTo(new Vector2(2f, -1f)));
-            Assert.That(enemy.CurrentHealth, Is.EqualTo(3));
+            Assert.That(enemy.CurrentHealth, Is.EqualTo(0.5f));
         }
 
         [Test]
         public void ChestRewardSeedsAreStable()
         {
-            DungeonRunState firstRun = DungeonRunStateFactory.Create(4, 4, 24680);
-            DungeonRunState secondRun = DungeonRunStateFactory.Create(4, 4, 24680);
-            RoomChestInstance firstChest = firstRun.GetRoomState(firstRun.Layout.StartPosition).Chests.Single();
-            RoomChestInstance secondChest = secondRun.GetRoomState(secondRun.Layout.StartPosition).Chests.Single();
+            DungeonRunState firstRun = DungeonRunStateFactory.Create(8, 8, 24680);
+            DungeonRunState secondRun = DungeonRunStateFactory.Create(8, 8, 24680);
+            int[] firstSeeds = firstRun.Rooms
+                .OrderBy(room => room.Key.x)
+                .ThenBy(room => room.Key.y)
+                .SelectMany(room => room.Value.Chests)
+                .Select(chest => chest.RewardSeed)
+                .ToArray();
+            int[] secondSeeds = secondRun.Rooms
+                .OrderBy(room => room.Key.x)
+                .ThenBy(room => room.Key.y)
+                .SelectMany(room => room.Value.Chests)
+                .Select(chest => chest.RewardSeed)
+                .ToArray();
 
-            Assert.That(firstChest.RewardSeed, Is.EqualTo(secondChest.RewardSeed));
+            Assert.That(firstSeeds, Is.Not.Empty);
+            Assert.That(secondSeeds, Is.EqualTo(firstSeeds));
         }
 
         [Test]

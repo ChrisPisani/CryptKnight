@@ -30,7 +30,7 @@ namespace CryptKnight.Player
 
         private void Update()
         {
-            if (GameManager.Instance.IsGameplayPaused)
+            if (GameManager.Instance.IsGameplayPaused || GameplayInputGate.IsBlocked)
             {
                 moveInput = Vector2.zero;
                 spriteAnimator?.SetMovement(Vector2.zero);
@@ -43,6 +43,11 @@ namespace CryptKnight.Player
 
         private void FixedUpdate()
         {
+            if (GameplayInputGate.IsBlocked)
+            {
+                return;
+            }
+
             body.MovePosition(PlayerMovement.CalculateNextPosition(body.position, moveInput, GetMoveSpeed(), Time.fixedDeltaTime));
         }
 

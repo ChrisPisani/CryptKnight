@@ -19,9 +19,13 @@ namespace CryptKnight.Data
 
         // Runtime stats are recalculated from base stats plus active modifiers so item buffs stack correctly
         public int MaxHealth => Math.Max(1, baseStats.MaxHealth + modifiers.Sum(modifier => modifier.MaxHealthBonus));
-        public int Damage => Math.Max(0, baseStats.Damage + modifiers.Sum(modifier => modifier.DamageBonus));
+        public float Damage => Math.Max(0f, baseStats.Damage + modifiers.Sum(modifier => modifier.DamageBonus));
         public float MovementSpeed => Math.Max(0f, baseStats.MovementSpeed + modifiers.Sum(modifier => modifier.MovementSpeedBonus));
         public float AttackRate => Math.Max(0.01f, baseStats.AttackRate + modifiers.Sum(modifier => modifier.AttackRateBonus));
+        public int ProjectileCount => Math.Max(1, baseStats.ProjectileCount + modifiers.Sum(modifier => modifier.ProjectileCountBonus));
+        public float ProjectileSpeed => Math.Max(0.1f, baseStats.ProjectileSpeed + modifiers.Sum(modifier => modifier.ProjectileSpeedBonus));
+        public int ProjectileBounces => Math.Max(0, baseStats.ProjectileBounces + modifiers.Sum(modifier => modifier.ProjectileBouncesBonus));
+        public float ProjectileSizeMultiplier => Math.Max(0.25f, baseStats.ProjectileSizeMultiplier + modifiers.Sum(modifier => modifier.ProjectileSizeBonus));
         public float AttackCooldownSeconds => 1f / AttackRate;
 
         public void AddModifier(PlayerStatModifier modifier)

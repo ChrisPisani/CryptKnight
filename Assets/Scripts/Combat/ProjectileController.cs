@@ -7,18 +7,19 @@ namespace CryptKnight.Combat
     public sealed class ProjectileController : MonoBehaviour
     {
         private DamageableTarget targetType;
-        private int damage;
+        private float damage;
         private float lifetimeSeconds;
         private float spawnTime;
         private bool isConfigured;
         private Rect? bounceBounds;
         private int bouncesRemaining;
+        private Transform visualTransform;
 
         public DamageableTarget TargetType => targetType;
-        public int Damage => damage;
+        public float Damage => damage;
         public int BouncesRemaining => bouncesRemaining;
 
-        public void Configure(Vector2 direction, float speed, int damageAmount, DamageableTarget target, float lifetime)
+        public void Configure(Vector2 direction, float speed, float damageAmount, DamageableTarget target, float lifetime)
         {
             targetType = target;
             damage = damageAmount;
@@ -32,7 +33,7 @@ namespace CryptKnight.Combat
             body.gravityScale = 0f;
             body.freezeRotation = true;
             body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
-            body.linearVelocity = direction.normalized * speed;
+            SetVelocityAndFacing(body, direction.normalized * speed);
 
             Collider2D projectileCollider = GetComponent<Collider2D>();
             projectileCollider.isTrigger = true;
@@ -135,7 +136,7 @@ namespace CryptKnight.Combat
                 Mathf.Clamp(position.y, bounds.yMin, bounds.yMax));
             transform.position = clampedPosition;
             body.position = clampedPosition;
-            body.linearVelocity = velocity;
+            SetVelocityAndFacing(body, velocity);
         }
 
         private bool TryBounceFromBlocker(Collider2D blocker)
@@ -166,8 +167,27 @@ namespace CryptKnight.Combat
             }
 
             bouncesRemaining--;
-            body.linearVelocity = velocity;
+            SetVelocityAndFacing(body, velocity);
             return true;
+        }
+
+        private void SetVelocityAndFacing(Rigidbody2D body, Vector2 velocity)
+        {
+            body.linearVelocity = velocity;
+            if (velocity.sqrMagnitude <= 0.001f)
+            {
+                return;
+            }
+
+            visualTransform ??= transform.Find("Visual");
+            if (visualTransform == null)
+            {
+                return;
+            }
+
+            // Projectile art points right, so its local right axis follows the current velocity.
+            float angle = Mathf.Atan2(velocity.y, velocity.x) * Mathf.Rad2Deg;
+            visualTransform.localRotation = Quaternion.Euler(0f, 0f, angle);
         }
     }
 }

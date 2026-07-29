@@ -5,18 +5,34 @@ namespace CryptKnight.Data
     [Serializable]
     public sealed class PlayerBaseStats
     {
-        public PlayerBaseStats(int maxHealth, int damage, float movementSpeed, float attackRate)
+        public PlayerBaseStats(
+            int maxHealth,
+            float damage,
+            float movementSpeed,
+            float attackRate,
+            int projectileCount = 1,
+            float projectileSpeed = 8f,
+            int projectileBounces = 0,
+            float projectileSizeMultiplier = 1f)
         {
             MaxHealth = maxHealth;
             Damage = damage;
             MovementSpeed = movementSpeed;
             AttackRate = attackRate;
+            ProjectileCount = projectileCount;
+            ProjectileSpeed = projectileSpeed;
+            ProjectileBounces = projectileBounces;
+            ProjectileSizeMultiplier = projectileSizeMultiplier;
         }
 
         public int MaxHealth { get; }
-        public int Damage { get; }
+        public float Damage { get; }
         public float MovementSpeed { get; }
         public float AttackRate { get; }
+        public int ProjectileCount { get; }
+        public float ProjectileSpeed { get; }
+        public int ProjectileBounces { get; }
+        public float ProjectileSizeMultiplier { get; }
 
         public static PlayerBaseStats CreateDefault()
         {
@@ -24,7 +40,11 @@ namespace CryptKnight.Data
                 maxHealth: 6,
                 damage: 1,
                 movementSpeed: 5f,
-                attackRate: 1f);
+                attackRate: 1f,
+                projectileCount: 1,
+                projectileSpeed: 8f,
+                projectileBounces: 0,
+                projectileSizeMultiplier: 1f);
         }
     }
 }

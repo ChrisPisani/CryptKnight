@@ -17,21 +17,26 @@ namespace CryptKnight.Loot
             PlayerStatModifier modifier = itemDefinition.StatModifier;
 
             AddMaxHeartEffect(effects, modifier.MaxHealthBonus * safeQuantity);
-            AddIntEffect(effects, modifier.DamageBonus * safeQuantity, "damage");
+            AddFloatEffect(effects, modifier.DamageBonus * safeQuantity, "damage");
             AddFloatEffect(effects, modifier.MovementSpeedBonus * safeQuantity, "movement speed");
             AddFloatEffect(effects, modifier.AttackRateBonus * safeQuantity, "attack speed");
-            AddIntEffect(effects, itemDefinition.KeyAmount * safeQuantity, "key");
+            AddCountEffect(effects, modifier.ProjectileCountBonus * safeQuantity, "projectile", "projectiles");
+            AddFloatEffect(effects, modifier.ProjectileSpeedBonus * safeQuantity, "projectile speed");
+            AddCountEffect(effects, modifier.ProjectileBouncesBonus * safeQuantity, "projectile bounce", "projectile bounces");
+            AddPercentageEffect(effects, modifier.ProjectileSizeBonus * safeQuantity, "projectile size");
+            AddCountEffect(effects, itemDefinition.KeyAmount * safeQuantity, "key", "keys");
 
             return effects.Count == 0 ? "No effect" : string.Join("\n", effects);
         }
 
-        private static void AddIntEffect(List<string> effects, int value, string label)
+        private static void AddCountEffect(List<string> effects, int value, string singularLabel, string pluralLabel)
         {
             if (value == 0)
             {
                 return;
             }
 
+            string label = value == 1 || value == -1 ? singularLabel : pluralLabel;
             effects.Add($"{FormatSigned(value)} {label}");
         }
 
@@ -56,6 +61,16 @@ namespace CryptKnight.Loot
             }
 
             effects.Add($"{FormatSigned(value)} {label}");
+        }
+
+        private static void AddPercentageEffect(List<string> effects, float value, string label)
+        {
+            if (value == 0f)
+            {
+                return;
+            }
+
+            effects.Add($"{FormatSigned(value * 100f)}% {label}");
         }
 
         private static string FormatSigned(int value)

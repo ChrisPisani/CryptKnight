@@ -63,7 +63,7 @@ namespace CryptKnight.Tests.EditMode
             projectile.Configure(Vector2.right, 8f, 2, DamageableTarget.Enemy, 2f);
 
             Assert.That(projectile.TargetType, Is.EqualTo(DamageableTarget.Enemy));
-            Assert.That(projectile.Damage, Is.EqualTo(2));
+            Assert.That(projectile.Damage, Is.EqualTo(2f));
             Assert.That(collider.isTrigger, Is.True);
             Assert.That(body.gravityScale, Is.EqualTo(0f));
             Assert.That(body.linearVelocity.x, Is.GreaterThan(0f));
@@ -207,6 +207,30 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
+        public void ProjectileSizeChangesVisualAndCollider()
+        {
+            ProjectileController projectile = ProjectileFactory.CreateCircleProjectile(
+                "Large Projectile",
+                Vector2.zero,
+                Vector2.right,
+                DamageableTarget.Enemy,
+                1,
+                8f,
+                0.27f,
+                2f,
+                Color.white,
+                null,
+                null,
+                0,
+                ProjectileVisualStyle.Default,
+                2f);
+            createdObjects.Add(projectile.gameObject);
+
+            Assert.That(projectile.GetComponent<CircleCollider2D>().radius, Is.EqualTo(0.27f));
+            Assert.That(GetRenderedProjectileDiameter(projectile), Is.EqualTo(1.08f).Within(0.001f));
+        }
+
+        [Test]
         public void ProjectileHitsMatchingTarget()
         {
             ProjectileController projectile = CreateProjectile(DamageableTarget.Enemy);
@@ -216,6 +240,30 @@ namespace CryptKnight.Tests.EditMode
             InvokeTrigger(projectile, enemyCollider);
 
             Assert.That(enemyHealth.CurrentHealth, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void ProjectileKeepsFractionalDamage()
+        {
+            ProjectileController projectile = ProjectileFactory.CreateCircleProjectile(
+                "Fractional Projectile",
+                Vector2.zero,
+                Vector2.right,
+                DamageableTarget.Enemy,
+                0.5f,
+                8f,
+                0.135f,
+                2f,
+                Color.white,
+                null);
+            createdObjects.Add(projectile.gameObject);
+            EnemyHealth enemyHealth = CreateEnemy(out Collider2D enemyCollider);
+
+            LogAssert.Expect(LogType.Error, new Regex("Destroy may not be called from edit mode"));
+            InvokeTrigger(projectile, enemyCollider);
+
+            Assert.That(projectile.Damage, Is.EqualTo(0.5f));
+            Assert.That(enemyHealth.CurrentHealth, Is.EqualTo(2.5f));
         }
 
         [Test]
@@ -285,9 +333,21 @@ namespace CryptKnight.Tests.EditMode
         [Test]
         public void BouncingProjectileBouncesOnce()
         {
-            ProjectileController projectile = CreateProjectile(DamageableTarget.Player);
+            ProjectileController projectile = ProjectileFactory.CreateCircleProjectile(
+                "Bouncing Projectile",
+                Vector2.zero,
+                Vector2.right,
+                DamageableTarget.Player,
+                1,
+                4f,
+                0.135f,
+                2f,
+                Color.white,
+                null,
+                Rect.MinMaxRect(-1f, -1f, 1f, 1f),
+                1);
+            createdObjects.Add(projectile.gameObject);
             Rigidbody2D body = projectile.GetComponent<Rigidbody2D>();
-            projectile.ConfigureBounce(Rect.MinMaxRect(-1f, -1f, 1f, 1f), 1);
             projectile.transform.position = new Vector2(2f, 0f);
             body.linearVelocity = Vector2.right * 4f;
 
@@ -295,6 +355,56 @@ namespace CryptKnight.Tests.EditMode
 
             Assert.That(projectile.BouncesRemaining, Is.EqualTo(0));
             Assert.That(body.linearVelocity.x, Is.LessThan(0f));
+            Assert.That(Vector2.Dot(projectile.transform.Find("Visual").right, body.linearVelocity.normalized), Is.GreaterThan(0.99f));
+        }
+
+        [Test]
+        public void ProjectileBouncesOffWall()
+        {
+            ProjectileController projectile = CreateProjectile(DamageableTarget.Player);
+            Rigidbody2D body = projectile.GetComponent<Rigidbody2D>();
+            projectile.ConfigureBounce(Rect.MinMaxRect(-2f, -2f, 2f, 2f), 1);
+            body.linearVelocity = Vector2.right * 4f;
+
+            GameObject wall = new GameObject("Wall");
+            createdObjects.Add(wall);
+            BoxCollider2D wallCollider = wall.AddComponent<BoxCollider2D>();
+            wallCollider.size = new Vector2(0.5f, 2f);
+
+            InvokeTrigger(projectile, wallCollider);
+
+            Assert.That(projectile.BouncesRemaining, Is.EqualTo(0));
+            Assert.That(body.linearVelocity.x, Is.LessThan(0f));
+        }
+
+        [Test]
+        public void WallBounceTurnsProjectileVisual()
+        {
+            ProjectileController projectile = ProjectileFactory.CreateCircleProjectile(
+                "Wall Bounce Projectile",
+                Vector2.zero,
+                Vector2.right,
+                DamageableTarget.Player,
+                1,
+                4f,
+                0.135f,
+                2f,
+                Color.white,
+                null,
+                Rect.MinMaxRect(-2f, -2f, 2f, 2f),
+                1);
+            createdObjects.Add(projectile.gameObject);
+            Rigidbody2D body = projectile.GetComponent<Rigidbody2D>();
+
+            GameObject wall = new GameObject("Wall");
+            createdObjects.Add(wall);
+            BoxCollider2D wallCollider = wall.AddComponent<BoxCollider2D>();
+            wallCollider.size = new Vector2(0.5f, 2f);
+
+            InvokeTrigger(projectile, wallCollider);
+
+            Vector2 visualDirection = projectile.transform.Find("Visual").right;
+            Assert.That(Vector2.Dot(visualDirection, body.linearVelocity.normalized), Is.GreaterThan(0.99f));
         }
 
         [Test]

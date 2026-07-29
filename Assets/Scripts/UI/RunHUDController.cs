@@ -19,6 +19,7 @@ namespace CryptKnight.UI
         private Transform heartsRoot;
         private Text keyCountText;
         private Transform itemRoot;
+        private LootTableConfiguration lootTable;
         private string lastItemSignature = string.Empty;
 
         private Sprite fullHeartSprite;
@@ -31,6 +32,7 @@ namespace CryptKnight.UI
         public void Initialize(Transform parent, Font font)
         {
             defaultFont = font;
+            lootTable = LootTableConfiguration.CreateDefault();
             LoadHudSprites();
             BuildHud(parent);
 
@@ -70,9 +72,16 @@ namespace CryptKnight.UI
             heartsRoot = CreateAnchoredGroup(topLeft.transform, "Hearts", new Vector2(0f, 1f), Vector2.zero, new Vector2(360f, 56f), new Vector2(0f, 1f)).transform;
             CreateKeyDisplay(topLeft.transform);
 
-            GameObject bottomLeft = CreateAnchoredGroup(hudRoot.transform, "Collected Items HUD", new Vector2(0f, 0f), new Vector2(28f, 28f), new Vector2(560f, 108f), new Vector2(0f, 0f));
+            GameObject bottomLeft = CreateAnchoredGroup(
+                hudRoot.transform,
+                "Collected Items HUD",
+                new Vector2(0f, 0f),
+                new Vector2(28f, 28f),
+                new Vector2(RunHudItemLayout.PanelWidth, RunHudItemLayout.EmptyPanelHeight),
+                new Vector2(0f, 0f));
             Image itemPanel = bottomLeft.AddComponent<Image>();
             itemPanel.color = ItemPanelColor;
+            bottomLeft.AddComponent<RectMask2D>();
             itemRoot = bottomLeft.transform;
         }
 
@@ -150,6 +159,10 @@ namespace CryptKnight.UI
             }
 
             lastItemSignature = itemSignature;
+            RectTransform itemRect = (RectTransform)itemRoot;
+            itemRect.sizeDelta = new Vector2(
+                RunHudItemLayout.PanelWidth,
+                RunHudItemLayout.GetPanelHeight(items.Count));
 
             for (int i = itemRoot.childCount - 1; i >= 0; i--)
             {
@@ -170,9 +183,22 @@ namespace CryptKnight.UI
 
         private void CreateItemStack(CollectedItemStack itemStack, int index)
         {
-            float x = 22f + index * 68f;
-
-            GameObject stackObject = CreateAnchoredGroup(itemRoot, $"Item {itemStack.ItemId}", new Vector2(0f, 0.5f), new Vector2(x, 0f), new Vector2(62f, 62f), new Vector2(0f, 0.5f));
+            GameObject stackObject = CreateAnchoredGroup(
+                itemRoot,
+                $"Item {itemStack.ItemId}",
+                new Vector2(0f, 1f),
+                RunHudItemLayout.GetItemPosition(index),
+                new Vector2(62f, 62f),
+                new Vector2(0f, 1f));
+            LootItemDefinition itemDefinition = FindItemDefinition(itemStack.ItemId);
+            Image slotBackground = stackObject.AddComponent<Image>();
+            slotBackground.sprite = LootItemVisuals.GetSquareSprite();
+            slotBackground.color = new Color(0.025f, 0.027f, 0.034f, 0.82f);
+            slotBackground.raycastTarget = false;
+            Outline rarityOutline = stackObject.AddComponent<Outline>();
+            rarityOutline.effectColor = LootRarityPresentation.GetColor(itemDefinition?.Rarity ?? LootRarity.Common);
+            rarityOutline.effectDistance = new Vector2(2f, -2f);
+            rarityOutline.useGraphicAlpha = true;
 
             GameObject iconObject = new GameObject("Icon");
             iconObject.transform.SetParent(stackObject.transform, false);
@@ -190,6 +216,24 @@ namespace CryptKnight.UI
             iconRect.sizeDelta = new Vector2(52f, 52f);
 
             CreateQuantityBadge(stackObject.transform, itemStack.Quantity, new Vector2(40f, -20f));
+        }
+
+        private LootItemDefinition FindItemDefinition(string itemId)
+        {
+            if (lootTable == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < lootTable.Items.Count; i++)
+            {
+                if (lootTable.Items[i].ItemId == itemId)
+                {
+                    return lootTable.Items[i];
+                }
+            }
+
+            return null;
         }
 
         private HeartView CreateHeartView(Transform parent, int index)
