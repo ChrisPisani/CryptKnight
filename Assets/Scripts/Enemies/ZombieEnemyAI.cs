@@ -22,8 +22,15 @@ namespace CryptKnight.Enemies
         private EnemySpriteAnimator animator;
         private Rect roomBounds;
         private float nextAttackTime;
+        private EnemyDifficultyProfile difficultyProfile = EnemyDifficultyProfile.Get(
+            EnemyKind.Zombie,
+            EnemyDifficulty.Normal);
 
         public Vector2 LastShotDirection { get; private set; }
+        public float CurrentMoveSpeed => MoveSpeed * difficultyProfile.MovementSpeedMultiplier;
+        public float CurrentAttackInterval => AttackIntervalSeconds / difficultyProfile.AttackSpeedMultiplier;
+        public float CurrentProjectileSpeed => ProjectileSpeed * difficultyProfile.ProjectileSpeedMultiplier;
+        public int CurrentProjectileDamage => ProjectileDamage * difficultyProfile.DamageMultiplier;
 
         private void Awake()
         {
@@ -52,15 +59,23 @@ namespace CryptKnight.Enemies
             MoveTowardPlayer(Time.fixedDeltaTime);
         }
 
-        public void Initialize(Transform playerTarget, Transform projectileRoot, Rect playableBounds, float phaseOffsetSeconds = 0f)
+        public void Initialize(
+            Transform playerTarget,
+            Transform projectileRoot,
+            Rect playableBounds,
+            float phaseOffsetSeconds = 0f,
+            EnemyDifficulty difficulty = EnemyDifficulty.Normal)
         {
             player = playerTarget;
             projectileParent = projectileRoot;
             roomBounds = playableBounds;
             body = body != null ? body : GetComponent<Rigidbody2D>();
             animator = animator != null ? animator : GetComponentInChildren<EnemySpriteAnimator>();
+            difficultyProfile = EnemyDifficultyProfile.Get(EnemyKind.Zombie, difficulty);
             ConfigureBody();
-            nextAttackTime = Time.time + AttackIntervalSeconds + Mathf.Max(0f, phaseOffsetSeconds);
+            nextAttackTime = Time.time
+                + CurrentAttackInterval
+                + Mathf.Max(0f, phaseOffsetSeconds) / difficultyProfile.AttackSpeedMultiplier;
         }
 
         public bool MoveTowardPlayer(float deltaTime)
@@ -73,7 +88,7 @@ namespace CryptKnight.Enemies
 
             Vector2 currentPosition = body != null ? body.position : (Vector2)transform.position;
             Vector2 direction = GetAimDirection(currentPosition, player.position);
-            Vector2 nextPosition = Vector2.MoveTowards(currentPosition, player.position, MoveSpeed * deltaTime);
+            Vector2 nextPosition = Vector2.MoveTowards(currentPosition, player.position, CurrentMoveSpeed * deltaTime);
             nextPosition = ClampToBounds(nextPosition, roomBounds);
 
             if (body != null)
@@ -107,7 +122,7 @@ namespace CryptKnight.Enemies
             SetPosition(lungePosition);
             animator?.PlayAttack(direction);
             FireProjectile(direction);
-            nextAttackTime = currentTime + AttackIntervalSeconds;
+            nextAttackTime = currentTime + CurrentAttackInterval;
             return true;
         }
 
@@ -136,8 +151,8 @@ namespace CryptKnight.Enemies
                 (Vector2)transform.position + direction * 0.65f,
                 direction,
                 DamageableTarget.Player,
-                ProjectileDamage,
-                ProjectileSpeed,
+                CurrentProjectileDamage,
+                CurrentProjectileSpeed,
                 ProjectileRadius,
                 ProjectileLifetimeSeconds,
                 new Color(1f, 0.25f, 0.2f, 1f),

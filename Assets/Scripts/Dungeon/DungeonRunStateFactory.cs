@@ -9,8 +9,6 @@ namespace CryptKnight.Dungeon
     public static class DungeonRunStateFactory
     {
         private const string KeyItemId = "key";
-        private const int ZombieMaxHealth = 5;
-        private const int SpiderMaxHealth = 3;
         private const int StarterGiftSalt = 0x53544746;
         private static readonly Vector2 StarterGiftPosition = new Vector2(-1.15f, 1.15f);
         private static readonly string[] StarterGiftItemIds =
@@ -21,12 +19,18 @@ namespace CryptKnight.Dungeon
             "attack_rate_up"
         };
 
-        public static DungeonRunState Create(int width, int height, int runSeed)
+        public static DungeonRunState Create(
+            int width,
+            int height,
+            int runSeed,
+            int floorNumber = 1,
+            EnemyDifficulty difficulty = EnemyDifficulty.Normal,
+            bool includeStarterGift = true)
         {
             LootTableConfiguration lootConfiguration = LootTableConfiguration.CreateDefault();
             LootDistributionRules lootRules = LootDistributionRules.CreateDefault();
             EnemySpawnRules enemyRules = EnemySpawnRules.CreateDefault();
-            FinalEncounterConfiguration finalEncounterConfiguration = FinalEncounterConfiguration.CreateDefault();
+            FinalEncounterConfiguration finalEncounterConfiguration = FinalEncounterConfiguration.CreateDefault(difficulty);
             TrapRoomConfiguration trapConfiguration = TrapRoomConfiguration.CreateDefault();
             TrapGenerationRules trapRules = new TrapGenerationRules(trapConfiguration);
             DungeonLayout layout = DungeonLayoutGenerator.Generate(width, height, runSeed);
@@ -41,7 +45,9 @@ namespace CryptKnight.Dungeon
                     lootRules,
                     enemyRules,
                     finalEncounterConfiguration,
-                    trapRules);
+                    trapRules,
+                    difficulty,
+                    includeStarterGift);
             }
 
             return new DungeonRunState(
@@ -50,7 +56,9 @@ namespace CryptKnight.Dungeon
                 lootConfiguration,
                 runSeed,
                 finalEncounterConfiguration,
-                trapConfiguration);
+                trapConfiguration,
+                floorNumber,
+                difficulty);
         }
 
         private static DungeonRoomRuntimeState CreateRoomState(
@@ -60,7 +68,9 @@ namespace CryptKnight.Dungeon
             LootDistributionRules lootRules,
             EnemySpawnRules enemyRules,
             FinalEncounterConfiguration finalEncounterConfiguration,
-            TrapGenerationRules trapRules)
+            TrapGenerationRules trapRules,
+            EnemyDifficulty difficulty,
+            bool includeStarterGift)
         {
             DungeonRoomRuntimeState state = new DungeonRoomRuntimeState(room.GridPosition, room.RoomType);
             if (room.RoomType == RoomType.Final)
@@ -72,7 +82,11 @@ namespace CryptKnight.Dungeon
             for (int i = 0; i < enemySpawns.Count; i++)
             {
                 RoomEnemySpawn spawn = enemySpawns[i];
-                state.AddEnemy(spawn.Kind, spawn.Position, GetEnemyMaxHealth(spawn.Kind));
+                state.AddEnemy(
+                    spawn.Kind,
+                    spawn.Position,
+                    EnemyDifficultyProfile.Get(spawn.Kind, difficulty).MaxHealth,
+                    difficulty);
             }
 
             IReadOnlyList<RoomTrapSpawn> trapSpawns = trapRules.CreateSpawns(room.RoomType, runSeed, room.GridPosition);
@@ -82,7 +96,7 @@ namespace CryptKnight.Dungeon
                 state.AddTrap(spawn.Kind, spawn.Position, spawn.FireDirection, spawn.PhaseOffsetSeconds);
             }
 
-            if (room.RoomType == RoomType.Starter)
+            if (room.RoomType == RoomType.Starter && includeStarterGift)
             {
                 AddStarterGift(state, lootConfiguration, runSeed);
             }
@@ -150,11 +164,6 @@ namespace CryptKnight.Dungeon
             }
 
             return null;
-        }
-
-        private static int GetEnemyMaxHealth(EnemyKind enemyKind)
-        {
-            return enemyKind == EnemyKind.Zombie ? ZombieMaxHealth : SpiderMaxHealth;
         }
 
         private static int CreateChestRewardSeed(int runSeed, Vector2Int roomPosition, int chestIndex)

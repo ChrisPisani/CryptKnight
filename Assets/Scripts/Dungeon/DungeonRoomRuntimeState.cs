@@ -31,8 +31,10 @@ namespace CryptKnight.Dungeon
         public int DefeatedEnemies { get; private set; }
         public int RemainingEnemies { get; private set; }
         public bool IsCleared { get; private set; }
-        // The final room stays sealed through intermissions, when no enemies are present.
-        public bool IsLocked => RoomType == RoomType.Final || (RoomType != RoomType.Starter && RemainingEnemies > 0);
+        // Final rooms stay sealed through intermissions but open after every wave is complete.
+        public bool IsLocked => RoomType == RoomType.Final
+            ? FinalEncounter == null || !FinalEncounter.IsComplete
+            : RoomType != RoomType.Starter && RemainingEnemies > 0;
         public FinalEncounterState FinalEncounter { get; private set; }
         public IReadOnlyList<RoomLootInstance> Loot => loot;
         public IReadOnlyList<RoomChestInstance> Chests => chests;
@@ -64,9 +66,18 @@ namespace CryptKnight.Dungeon
             IsCleared = TotalEnemies == 0 ? IsCleared : false;
         }
 
-        public RoomEnemyInstance AddEnemy(EnemyKind kind, Vector2 position, int maximumHealth = 1)
+        public RoomEnemyInstance AddEnemy(
+            EnemyKind kind,
+            Vector2 position,
+            int maximumHealth = 1,
+            EnemyDifficulty difficulty = EnemyDifficulty.Normal)
         {
-            RoomEnemyInstance instance = new RoomEnemyInstance(nextEnemyId++, kind, position, maximumHealth);
+            RoomEnemyInstance instance = new RoomEnemyInstance(
+                nextEnemyId++,
+                kind,
+                position,
+                maximumHealth,
+                difficulty);
             enemies.Add(instance);
             TotalEnemies++;
             RemainingEnemies++;
@@ -241,19 +252,26 @@ namespace CryptKnight.Dungeon
 
     public sealed class RoomEnemyInstance
     {
-        public RoomEnemyInstance(int id, EnemyKind kind, Vector2 position, int maximumHealth)
+        public RoomEnemyInstance(
+            int id,
+            EnemyKind kind,
+            Vector2 position,
+            int maximumHealth,
+            EnemyDifficulty difficulty = EnemyDifficulty.Normal)
         {
             Id = id;
             Kind = kind;
             Position = position;
             MaxHealth = Mathf.Max(1, maximumHealth);
             CurrentHealth = MaxHealth;
+            Difficulty = difficulty;
         }
 
         public int Id { get; }
         public EnemyKind Kind { get; }
         public Vector2 Position { get; private set; }
         public int MaxHealth { get; }
+        public EnemyDifficulty Difficulty { get; }
         public float CurrentHealth { get; private set; }
         public bool IsDefeated { get; private set; }
 

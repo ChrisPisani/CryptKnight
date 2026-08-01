@@ -2,6 +2,7 @@ using System;
 using CryptKnight.Audio;
 using CryptKnight.Data;
 using CryptKnight.Dungeon;
+using CryptKnight.Enemies;
 using CryptKnight.Loot;
 using UnityEngine;
 
@@ -11,6 +12,7 @@ namespace CryptKnight.Application
     {
         private const int DungeonWidth = 4;
         private const int DungeonHeight = 4;
+        private const int MaximumFloorNumber = 2;
         private static GameManager instance;
         private int runCounter;
 
@@ -52,10 +54,19 @@ namespace CryptKnight.Application
 
         public GameRunState StartNewRun()
         {
+            return StartNewRun(UnityEngine.Random.Range(100000, 1000000));
+        }
+
+        public GameRunState StartNewRun(int seed)
+        {
+            if (!RunSeedUtility.IsValid(seed))
+            {
+                throw new ArgumentOutOfRangeException(nameof(seed));
+            }
+
             runCounter++;
             SetGameplayPaused(false);
 
-            int seed = UnityEngine.Random.Range(100000, 999999);
             CurrentRun = GameRunState.CreateNewRun(
                 runCounter,
                 seed,
@@ -67,6 +78,35 @@ namespace CryptKnight.Application
             Debug.Log($"Started Crypt Knight run {CurrentRun.RunNumber} with seed {CurrentRun.Seed}.");
             RunStateChanged?.Invoke(CurrentRun);
             return CurrentRun;
+        }
+
+        public bool AdvanceToNextFloor()
+        {
+            if (CurrentRun == null
+                || !CurrentRun.IsActive
+                || CurrentRun.CurrentFloorNumber >= MaximumFloorNumber)
+            {
+                return false;
+            }
+
+            int nextFloorNumber = CurrentRun.CurrentFloorNumber + 1;
+            int floorSeed = RunSeedUtility.GetFloorSeed(CurrentRun.Seed, nextFloorNumber);
+            DungeonRunState nextDungeon = DungeonRunStateFactory.Create(
+                CurrentRun.DungeonWidth,
+                CurrentRun.DungeonHeight,
+                floorSeed,
+                nextFloorNumber,
+                EnemyDifficulty.Hard,
+                false);
+            if (!CurrentRun.AdvanceToDungeon(nextDungeon))
+            {
+                return false;
+            }
+
+            CurrentRun.Heal(CurrentRun.MaxHealth);
+            Debug.Log($"Entered Crypt Knight floor {nextFloorNumber} with derived seed {floorSeed}.");
+            RunStateChanged?.Invoke(CurrentRun);
+            return true;
         }
 
         public void QuitCurrentRun()

@@ -197,6 +197,190 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
+        public void HardEnemiesHaveDoubleHealth()
+        {
+            EnemyDifficultyProfile zombie = EnemyDifficultyProfile.Get(EnemyKind.Zombie, EnemyDifficulty.Hard);
+            EnemyDifficultyProfile spider = EnemyDifficultyProfile.Get(EnemyKind.Spider, EnemyDifficulty.Hard);
+
+            Assert.That(zombie.MaxHealth, Is.EqualTo(10));
+            Assert.That(spider.MaxHealth, Is.EqualTo(6));
+            Assert.That(zombie.AnimationSpeedMultiplier, Is.EqualTo(2f));
+            Assert.That(spider.AnimationSpeedMultiplier, Is.EqualTo(2f));
+            Assert.That(zombie.Tint, Is.Not.EqualTo(Color.white));
+            Assert.That(spider.Tint, Is.Not.EqualTo(Color.white));
+        }
+
+        [Test]
+        public void HardEnemiesUseFasterCombat()
+        {
+            GameObject player = CreateObject("Player");
+            GameObject zombieObject = CreateEnemyObject("Hard Zombie");
+            GameObject spiderObject = CreateEnemyObject("Hard Spider");
+            ZombieEnemyAI zombie = zombieObject.AddComponent<ZombieEnemyAI>();
+            SpiderEnemyAI spider = spiderObject.AddComponent<SpiderEnemyAI>();
+
+            zombie.Initialize(player.transform, null, CreateRoomBounds(), 0f, EnemyDifficulty.Hard);
+            spider.Initialize(player.transform, null, CreateRoomBounds(), 0f, EnemyDifficulty.Hard);
+
+            Assert.That(zombie.CurrentMoveSpeed, Is.EqualTo(2.3f).Within(0.001f));
+            Assert.That(zombie.CurrentAttackInterval, Is.EqualTo(1f));
+            Assert.That(zombie.CurrentProjectileSpeed, Is.EqualTo(7.2f).Within(0.001f));
+            Assert.That(spider.CurrentJumpInterval, Is.EqualTo(0.75f));
+            Assert.That(spider.CurrentAttackDelay, Is.EqualTo(0.75f));
+            Assert.That(spider.CurrentJumpDuration, Is.EqualTo(0.3f).Within(0.001f));
+            Assert.That(spider.CurrentProjectileSpeed, Is.EqualTo(4.6f).Within(0.001f));
+            Assert.That(spider.CurrentProjectileDamage, Is.EqualTo(2));
+            Assert.That(spider.CurrentProjectileCount, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void HardZombieStillDealsHalfHeart()
+        {
+            GameObject projectileRoot = CreateObject("Projectiles");
+            GameObject enemy = CreateEnemyObject("Hard Zombie");
+            GameObject player = CreateObject("Player");
+            player.transform.position = Vector2.right * 3f;
+            ZombieEnemyAI zombie = enemy.AddComponent<ZombieEnemyAI>();
+            zombie.Initialize(
+                player.transform,
+                projectileRoot.transform,
+                CreateRoomBounds(),
+                0f,
+                EnemyDifficulty.Hard);
+
+            Assert.That(zombie.TryAttack(1000f), Is.True);
+
+            CryptKnight.Combat.ProjectileController projectile =
+                projectileRoot.GetComponentInChildren<CryptKnight.Combat.ProjectileController>();
+            Assert.That(projectile, Is.Not.Null);
+            Assert.That(projectile.Damage, Is.EqualTo(1f));
+            Assert.That(zombie.CurrentProjectileDamage, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void HardSpiderShootsTwoProjectiles()
+        {
+            GameObject projectileRoot = CreateObject("Projectiles");
+            GameObject enemy = CreateEnemyObject("Hard Spider");
+            GameObject player = CreateObject("Player");
+            player.transform.position = new Vector2(2f, 2f);
+            SpiderEnemyAI spider = enemy.AddComponent<SpiderEnemyAI>();
+            spider.Initialize(
+                player.transform,
+                projectileRoot.transform,
+                CreateRoomBounds(),
+                0f,
+                EnemyDifficulty.Hard);
+
+            Assert.That(spider.TryAttack(1000f), Is.True);
+            for (int i = 0; i < 7; i++)
+            {
+                spider.AdvanceJump(0.05f, 1000f + (i + 1) * 0.05f);
+            }
+
+            Assert.That(spider.TryResolvePendingAttack(1000.75f), Is.True);
+            CryptKnight.Combat.ProjectileController[] projectiles =
+                projectileRoot.GetComponentsInChildren<CryptKnight.Combat.ProjectileController>();
+
+            Assert.That(projectiles, Has.Length.EqualTo(2));
+            Assert.That(projectiles[0].Damage, Is.EqualTo(2f));
+            Assert.That(projectiles[1].Damage, Is.EqualTo(2f));
+            Assert.That(projectiles[0].BouncesRemaining, Is.EqualTo(1));
+            Assert.That(projectiles[1].BouncesRemaining, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void HardSpiderShotsUseNormalSpeed()
+        {
+            GameObject player = CreateObject("Player");
+            GameObject enemy = CreateEnemyObject("Hard Spider");
+            SpiderEnemyAI spider = enemy.AddComponent<SpiderEnemyAI>();
+
+            spider.Initialize(player.transform, null, CreateRoomBounds(), 0f, EnemyDifficulty.Hard);
+
+            Assert.That(spider.CurrentProjectileSpeed, Is.EqualTo(4.6f).Within(0.001f));
+        }
+
+        [Test]
+        public void HardSpiderShotsUseCenteredFan()
+        {
+            Vector2[] directions = EnemyProjectileSpread.CreateDirections(Vector2.up, 2);
+
+            Assert.That(directions, Has.Length.EqualTo(2));
+            Assert.That(Vector2.Angle(directions[0], directions[1]), Is.EqualTo(15f).Within(0.001f));
+            Assert.That(directions[0].x, Is.EqualTo(-directions[1].x).Within(0.001f));
+            Assert.That(directions[0].y, Is.EqualTo(directions[1].y).Within(0.001f));
+        }
+
+        [Test]
+        public void NormalSpiderStillShootsOnce()
+        {
+            GameObject player = CreateObject("Player");
+            GameObject enemy = CreateEnemyObject("Spider");
+            SpiderEnemyAI spider = enemy.AddComponent<SpiderEnemyAI>();
+
+            spider.Initialize(player.transform, null, CreateRoomBounds());
+
+            Assert.That(spider.CurrentProjectileCount, Is.EqualTo(1));
+            Assert.That(EnemyProjectileSpread.CreateDirections(Vector2.zero, 1), Has.Length.EqualTo(1));
+        }
+
+        [Test]
+        public void HardAnimatorRunsFaster()
+        {
+            GameObject zombieVisual = CreateObject("Zombie Visual");
+            SpriteRenderer zombieRenderer = zombieVisual.AddComponent<SpriteRenderer>();
+            EnemySpriteAnimator zombieAnimator = zombieVisual.AddComponent<EnemySpriteAnimator>();
+            zombieAnimator.Initialize(EnemyKind.Zombie, 2f);
+
+            Assert.That(zombieRenderer.sprite, Is.Not.Null);
+            Assert.That(GetPrivateField<float>(zombieAnimator, "animationSpeedMultiplier"), Is.EqualTo(2f));
+            zombieAnimator.SetMovement(Vector2.right);
+            zombieAnimator.PlayAttack(Vector2.up);
+            AdvanceAnimator(zombieAnimator, 5);
+            zombieAnimator.SetMovement(Vector2.left);
+            SetPrivateField(zombieAnimator, "elapsed", 1f);
+            InvokePrivate(zombieAnimator, "Update");
+            zombieAnimator.SetMovement(Vector2.zero);
+            InvokePrivate(zombieAnimator, "Update");
+
+            GameObject spiderVisual = CreateObject("Spider Visual");
+            SpriteRenderer spiderRenderer = spiderVisual.AddComponent<SpriteRenderer>();
+            EnemySpriteAnimator spiderAnimator = spiderVisual.AddComponent<EnemySpriteAnimator>();
+            spiderAnimator.Initialize(EnemyKind.Spider, 0f);
+            spiderAnimator.SetMovement(new Vector2(1f, 4f));
+            spiderAnimator.PlayAttack(Vector2.left);
+            AdvanceAnimator(spiderAnimator, 5);
+
+            Assert.That(spiderRenderer.sprite, Is.Not.Null);
+            Assert.That(GetPrivateField<float>(spiderAnimator, "animationSpeedMultiplier"), Is.EqualTo(0.1f));
+        }
+
+        [Test]
+        public void SecondFloorUsesHardEnemies()
+        {
+            DungeonRunState floor = DungeonRunStateFactory.Create(
+                4,
+                4,
+                54321,
+                2,
+                EnemyDifficulty.Hard,
+                false);
+
+            foreach (DungeonRoomRuntimeState room in floor.Rooms.Values)
+            {
+                for (int i = 0; i < room.Enemies.Count; i++)
+                {
+                    RoomEnemyInstance enemy = room.Enemies[i];
+                    Assert.That(enemy.Difficulty, Is.EqualTo(EnemyDifficulty.Hard));
+                    Assert.That(
+                        enemy.MaxHealth,
+                        Is.EqualTo(EnemyDifficultyProfile.Get(enemy.Kind, EnemyDifficulty.Hard).MaxHealth));
+                }
+            }
+        }
+
+        [Test]
         public void SpiderJumpsDiagonally()
         {
             GameObject projectileRoot = CreateObject("Projectiles");
@@ -297,6 +481,42 @@ namespace CryptKnight.Tests.EditMode
             }
 
             return false;
+        }
+
+        private static void AdvanceAnimator(EnemySpriteAnimator animator, int updates)
+        {
+            for (int i = 0; i < updates; i++)
+            {
+                SetPrivateField(animator, "elapsed", 1f);
+                InvokePrivate(animator, "Update");
+            }
+        }
+
+        private static T GetPrivateField<T>(object target, string fieldName)
+        {
+            FieldInfo field = target.GetType().GetField(
+                fieldName,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(field, Is.Not.Null);
+            return (T)field.GetValue(target);
+        }
+
+        private static void SetPrivateField<T>(object target, string fieldName, T value)
+        {
+            FieldInfo field = target.GetType().GetField(
+                fieldName,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(field, Is.Not.Null);
+            field.SetValue(target, value);
+        }
+
+        private static void InvokePrivate(object target, string methodName)
+        {
+            MethodInfo method = target.GetType().GetMethod(
+                methodName,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(method, Is.Not.Null);
+            method.Invoke(target, null);
         }
     }
 }

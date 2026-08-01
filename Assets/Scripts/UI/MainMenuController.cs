@@ -15,7 +15,7 @@ namespace CryptKnight.UI
 {
     public sealed class MainMenuController : MonoBehaviour
     {
-        private const string DemoVersion = "v0.9.0";
+        private const string DemoVersion = "v0.15.0";
         private const string MainMenuBackgroundPath = "Art/UI/main_menu_background";
         private const string MainMenuButtonSheetPath = "Art/UI/crypt-knight-buttons-transparent-full-sheet";
         private const string LaunchStingerResourcePath = "Audio/Menu/crypt-knight-launch-stinger";
@@ -56,7 +56,10 @@ namespace CryptKnight.UI
         private GameObject menuPanel;
         private GameObject runPanel;
         private GameObject settingsPopup;
+        private GameObject seedPopup;
         private GameObject continueUnavailablePopup;
+        private InputField seedInput;
+        private Text seedErrorText;
         private Text runInfoText;
         private Text masterVolumeValueText;
         private Text musicVolumeValueText;
@@ -147,13 +150,15 @@ namespace CryptKnight.UI
                 CreateText(menuPanel.transform, "Subtitle", "Work in progress demo", 22, FontStyle.Normal, TextAnchor.MiddleCenter, MutedTextColor, new Vector2(0f, 86f), new Vector2(620f, 40f));
             }
 
-            CreateMenuImageButton(menuPanel.transform, "New Run Button", "NEW RUN", "menu_button_new_run_normal", "menu_button_new_run_hover", new Vector2(0f, -82f), StartNewRun);
+            CreateMenuImageButton(menuPanel.transform, "New Run Button", "NEW RUN", "menu_button_new_run_normal", "menu_button_new_run_hover", new Vector2(0f, -82f), ShowSeedPopup);
             CreateMenuImageButton(menuPanel.transform, "Continue Button", "CONTINUE", "menu_button_continue_normal", "menu_button_continue_hover", new Vector2(0f, -252f), ContinueUnavailable);
             CreateMenuImageButton(menuPanel.transform, "Settings Button", "SETTINGS", "menu_button_settings_normal", "menu_button_settings_hover", new Vector2(0f, -422f), ShowSettings);
             continueUnavailablePopup = CreateContinueUnavailablePopup(menuScreen.transform);
             continueUnavailablePopup.SetActive(false);
             settingsPopup = CreateSettingsPopup(menuScreen.transform);
             settingsPopup.SetActive(false);
+            seedPopup = CreateSeedPopup(menuScreen.transform);
+            seedPopup.SetActive(false);
             CreateVersionLabel(menuScreen.transform);
 
             runPanel = CreatePanel(canvas.transform, "Run Panel", new Vector2(520f, 320f));
@@ -865,6 +870,136 @@ namespace CryptKnight.UI
             return popupObject;
         }
 
+        private GameObject CreateSeedPopup(Transform parent)
+        {
+            GameObject popupObject = new GameObject("New Run Seed Popup");
+            popupObject.transform.SetParent(parent, false);
+
+            Image backdrop = popupObject.AddComponent<Image>();
+            backdrop.color = PopupBackdropColor;
+            RectTransform popupRect = backdrop.rectTransform;
+            popupRect.anchorMin = Vector2.zero;
+            popupRect.anchorMax = Vector2.one;
+            popupRect.offsetMin = Vector2.zero;
+            popupRect.offsetMax = Vector2.zero;
+
+            GameObject panelObject = CreatePanel(popupObject.transform, "Seed Panel", new Vector2(760f, 520f));
+            Image panelImage = panelObject.GetComponent<Image>();
+            StylePanel(panelImage, new Vector2(760f, 520f), PopupPanelColor);
+
+            Outline outline = panelObject.AddComponent<Outline>();
+            outline.effectColor = GoldColor;
+            outline.effectDistance = new Vector2(2f, -2f);
+
+            CreateText(
+                panelObject.transform,
+                "Seed Title",
+                "NEW RUN",
+                36,
+                FontStyle.Bold,
+                TextAnchor.MiddleCenter,
+                TextColor,
+                new Vector2(0f, 190f),
+                new Vector2(560f, 52f));
+            CreateText(
+                panelObject.transform,
+                "Seed Instructions",
+                "ENTER A SEED FROM 1 TO 999,999,999",
+                19,
+                FontStyle.Bold,
+                TextAnchor.MiddleCenter,
+                MutedTextColor,
+                new Vector2(0f, 126f),
+                new Vector2(620f, 38f));
+
+            seedInput = CreateSeedInput(panelObject.transform, new Vector2(0f, 56f));
+            seedErrorText = CreateText(
+                panelObject.transform,
+                "Seed Error",
+                string.Empty,
+                18,
+                FontStyle.Bold,
+                TextAnchor.MiddleCenter,
+                new Color(0.95f, 0.30f, 0.24f, 1f),
+                new Vector2(0f, 4f),
+                new Vector2(620f, 34f));
+
+            CreateCompactButton(
+                panelObject.transform,
+                "Start Seeded Run Button",
+                "START WITH SEED",
+                new Vector2(-145f, -82f),
+                StartCustomSeedRun);
+            CreateCompactButton(
+                panelObject.transform,
+                "Random Seed Button",
+                "RANDOM SEED",
+                new Vector2(145f, -82f),
+                StartRandomSeedRun);
+            CreateCompactButton(
+                panelObject.transform,
+                "Close Seed Button",
+                "CLOSE",
+                new Vector2(0f, -172f),
+                HideSeedPopup);
+            return popupObject;
+        }
+
+        private InputField CreateSeedInput(Transform parent, Vector2 position)
+        {
+            GameObject inputObject = new GameObject("Seed Input");
+            inputObject.transform.SetParent(parent, false);
+
+            Image background = inputObject.AddComponent<Image>();
+            background.color = new Color(0.025f, 0.022f, 0.028f, 0.98f);
+            Outline outline = inputObject.AddComponent<Outline>();
+            outline.effectColor = DarkGoldColor;
+            outline.effectDistance = new Vector2(2f, -2f);
+
+            RectTransform inputRect = background.rectTransform;
+            inputRect.anchorMin = new Vector2(0.5f, 0.5f);
+            inputRect.anchorMax = new Vector2(0.5f, 0.5f);
+            inputRect.pivot = new Vector2(0.5f, 0.5f);
+            inputRect.anchoredPosition = position;
+            inputRect.sizeDelta = new Vector2(500f, 62f);
+
+            Text inputText = CreateText(
+                inputObject.transform,
+                "Input Text",
+                string.Empty,
+                25,
+                FontStyle.Bold,
+                TextAnchor.MiddleCenter,
+                TextColor,
+                Vector2.zero,
+                new Vector2(458f, 48f));
+            Text placeholder = CreateText(
+                inputObject.transform,
+                "Placeholder",
+                "CUSTOM SEED",
+                22,
+                FontStyle.Normal,
+                TextAnchor.MiddleCenter,
+                MutedTextColor,
+                Vector2.zero,
+                new Vector2(458f, 48f));
+
+            InputField field = inputObject.AddComponent<InputField>();
+            field.targetGraphic = background;
+            field.textComponent = inputText;
+            field.placeholder = placeholder;
+            field.contentType = InputField.ContentType.IntegerNumber;
+            field.characterLimit = 9;
+            field.onEndEdit.AddListener(_ =>
+            {
+                if (IsSubmitPressed())
+                {
+                    StartCustomSeedRun();
+                }
+            });
+            return field;
+        }
+
         private Button CreateCompactButton(Transform parent, string objectName, string label, Vector2 position, UnityEngine.Events.UnityAction onClick)
         {
             GameObject buttonObject = new GameObject(objectName);
@@ -1041,8 +1176,38 @@ namespace CryptKnight.UI
             rectTransform.sizeDelta = size;
         }
 
-        private void StartNewRun()
+        private void ShowSeedPopup()
         {
+            settingsPopup?.SetActive(false);
+            continueUnavailablePopup?.SetActive(false);
+            seedErrorText.text = string.Empty;
+            seedInput.text = string.Empty;
+            seedPopup.SetActive(true);
+            seedPopup.transform.SetAsLastSibling();
+            seedInput.ActivateInputField();
+        }
+
+        private void HideSeedPopup()
+        {
+            seedPopup?.SetActive(false);
+        }
+
+        private void StartCustomSeedRun()
+        {
+            if (!RunSeedUtility.TryParse(seedInput?.text, out int seed))
+            {
+                seedErrorText.text = "ENTER A NUMBER FROM 1 TO 999,999,999";
+                seedInput?.ActivateInputField();
+                return;
+            }
+
+            HideSeedPopup();
+            GameManager.Instance.StartNewRun(seed);
+        }
+
+        private void StartRandomSeedRun()
+        {
+            HideSeedPopup();
             GameManager.Instance.StartNewRun();
         }
 
@@ -1229,6 +1394,17 @@ namespace CryptKnight.UI
             rectTransform.anchorMax = new Vector2(1f, 0f);
             rectTransform.pivot = new Vector2(1f, 0f);
             rectTransform.anchoredPosition = new Vector2(-18f, 14f);
+        }
+
+        private static bool IsSubmitPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            Keyboard keyboard = Keyboard.current;
+            return keyboard != null
+                && (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame);
+#else
+            return Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter);
+#endif
         }
 
         private static string FormatHearts(int halfHeartValue)

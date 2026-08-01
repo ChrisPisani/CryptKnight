@@ -18,6 +18,7 @@ namespace CryptKnight.UI
         private GameObject hudRoot;
         private Transform heartsRoot;
         private Text keyCountText;
+        private Text seedText;
         private Transform itemRoot;
         private LootTableConfiguration lootTable;
         private string lastItemSignature = string.Empty;
@@ -72,6 +73,24 @@ namespace CryptKnight.UI
             heartsRoot = CreateAnchoredGroup(topLeft.transform, "Hearts", new Vector2(0f, 1f), Vector2.zero, new Vector2(360f, 56f), new Vector2(0f, 1f)).transform;
             CreateKeyDisplay(topLeft.transform);
 
+            GameObject topRight = CreateAnchoredGroup(
+                hudRoot.transform,
+                "Top Right HUD",
+                new Vector2(1f, 1f),
+                new Vector2(-28f, -28f),
+                new Vector2(340f, 48f),
+                new Vector2(1f, 1f));
+            seedText = CreateText(
+                topRight.transform,
+                "Run Seed",
+                string.Empty,
+                18,
+                FontStyle.Bold,
+                TextAnchor.UpperRight,
+                HudTextColor,
+                Vector2.zero,
+                new Vector2(340f, 42f));
+
             GameObject bottomLeft = CreateAnchoredGroup(
                 hudRoot.transform,
                 "Collected Items HUD",
@@ -122,6 +141,7 @@ namespace CryptKnight.UI
         {
             RefreshHearts(runState.CurrentHealth, runState.MaxHealth);
             keyCountText.text = $"x{runState.KeyCount}";
+            seedText.text = RunSeedUtility.FormatForHud(runState.Seed);
             RefreshItems(runState.CollectedItems);
         }
 

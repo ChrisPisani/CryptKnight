@@ -11,6 +11,7 @@ using CryptKnight.Player;
 using CryptKnight.Traps;
 using CryptKnight.UI;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace CryptKnight.Gameplay
 {
@@ -20,6 +21,9 @@ namespace CryptKnight.Gameplay
         private const float PlayerColliderRadius = 0.35f;
         private const float ZombiePhaseSpreadSeconds = 2.0f;
         private const float SpiderPhaseSpreadSeconds = 1.5f;
+        private const float FloorFadeToBlackSeconds = 0.65f;
+        private const float FloorFlashHoldSeconds = 0.08f;
+        private const float FloorFlashFadeSeconds = 0.55f;
         private static readonly Vector2 PlayerVisualOffset = new Vector2(0f, 0.08f);
         private static readonly Vector2 EnemyDropOffset = new Vector2(0f, 0.85f);
         private static readonly Vector2 RoomClearDropOffset = new Vector2(-0.85f, 0.85f);
@@ -39,6 +43,10 @@ namespace CryptKnight.Gameplay
         private System.Random lootRandom;
         private GameplayMusicController musicController;
         private FinalEncounterController finalEncounterController;
+        private FloorPortal floorPortal;
+        private Coroutine floorTransitionRoutine;
+        private Canvas floorTransitionCanvas;
+        private Image floorTransitionImage;
         private Coroutine runEndRoutine;
         private readonly DungeonRoomEnvironmentBuilder environmentBuilder = new DungeonRoomEnvironmentBuilder();
 
@@ -73,6 +81,7 @@ namespace CryptKnight.Gameplay
             }
 
             GameAudioSettings.VolumesChanged -= HandleAudioSettingsChanged;
+            EndFloorTransition();
         }
 
         private void HandleRunStateChanged(GameRunState runState)
@@ -85,7 +94,7 @@ namespace CryptKnight.Gameplay
                     runEndRoutine = null;
                 }
 
-                if (gameplayRoot == null)
+                if (gameplayRoot == null || dungeonRun != runState.Dungeon)
                 {
                     BuildGameplayScene();
                 }
@@ -164,6 +173,7 @@ namespace CryptKnight.Gameplay
 
             if (gameplayRoot != null)
             {
+                gameplayRoot.SetActive(false);
                 Destroy(gameplayRoot);
             }
 
@@ -176,6 +186,7 @@ namespace CryptKnight.Gameplay
             lootSystem = null;
             lootRandom = null;
             finalEncounterController = null;
+            floorPortal = null;
         }
 
         public void TravelThroughDoor(RoomDirection direction)
@@ -191,7 +202,7 @@ namespace CryptKnight.Gameplay
             }
 
             DungeonRoomRuntimeState roomState = dungeonRun.CurrentRoomState;
-            return roomState.RoomType != RoomType.Final && !roomState.IsLocked;
+            return !roomState.IsLocked;
         }
 
         public bool TryTravelThroughDoor(RoomDirection direction)
@@ -219,12 +230,19 @@ namespace CryptKnight.Gameplay
             DungeonRoomRuntimeState roomState = dungeonRun.GetRoomState(currentRoom.GridPosition);
             environmentBuilder.Build(roomRoot.transform, currentRoom, dungeonRun.Layout, TravelThroughDoor);
             CreateRoomContents(roomRoot.transform, roomState);
+            bool completedFinalEncounter = false;
             if (currentRoom.RoomType == RoomType.Final)
             {
+                completedFinalEncounter = roomState.FinalEncounter != null
+                    && roomState.FinalEncounter.IsComplete;
                 StartFinalEncounter(roomRoot.transform, roomState);
             }
 
-            musicController?.TransitionTo(currentRoom.RoomType);
+            // Returning to a cleared finale recreates its portal without restarting boss music.
+            if (!completedFinalEncounter)
+            {
+                musicController?.TransitionTo(currentRoom.RoomType);
+            }
 
             if (playerTransform != null)
             {
@@ -242,6 +260,7 @@ namespace CryptKnight.Gameplay
             // Projectiles may be linked to player/enemy, so clear them separately on room swaps.
             ClearActiveProjectiles();
             finalEncounterController = null;
+            floorPortal = null;
 
             for (int i = roomRoot.transform.childCount - 1; i >= 0; i--)
             {
@@ -320,8 +339,12 @@ namespace CryptKnight.Gameplay
                 : new Vector3(1.60f, 1.60f, 1f);
             SpriteRenderer renderer = visual.AddComponent<SpriteRenderer>();
             renderer.sortingOrder = 9;
+            EnemyDifficultyProfile difficultyProfile = EnemyDifficultyProfile.Get(
+                enemyInstance.Kind,
+                enemyInstance.Difficulty);
+            renderer.color = difficultyProfile.Tint;
             EnemySpriteAnimator animator = visual.AddComponent<EnemySpriteAnimator>();
-            animator.Initialize(enemyInstance.Kind);
+            animator.Initialize(enemyInstance.Kind, difficultyProfile.AnimationSpeedMultiplier);
 
             EnemyHealth enemyHealth = enemy.AddComponent<EnemyHealth>();
             enemyHealth.Initialize(enemyInstance.MaxHealth, enemyInstance.CurrentHealth);
@@ -336,11 +359,21 @@ namespace CryptKnight.Gameplay
             float phaseOffset = GetEnemyPhaseOffset(enemyInstance.Id, enemyInstance.Kind);
             if (enemyInstance.Kind == EnemyKind.Spider)
             {
-                enemy.AddComponent<SpiderEnemyAI>().Initialize(playerTransform, parent, playableBounds, phaseOffset);
+                enemy.AddComponent<SpiderEnemyAI>().Initialize(
+                    playerTransform,
+                    parent,
+                    playableBounds,
+                    phaseOffset,
+                    enemyInstance.Difficulty);
                 return;
             }
 
-            enemy.AddComponent<ZombieEnemyAI>().Initialize(playerTransform, parent, playableBounds, phaseOffset);
+            enemy.AddComponent<ZombieEnemyAI>().Initialize(
+                playerTransform,
+                parent,
+                playableBounds,
+                phaseOffset,
+                enemyInstance.Difficulty);
         }
 
         private static float GetEnemyPhaseOffset(int enemyId, EnemyKind enemyKind)
@@ -497,9 +530,117 @@ namespace CryptKnight.Gameplay
             finalEncounterController.Initialize(
                 roomState,
                 dungeonRun.FinalEncounterConfig,
-                GameManager.Instance.CurrentRun.Seed,
+                dungeonRun.FloorSeed,
                 enemy => CreateEnemy(parent, roomState, enemy),
-                GameManager.Instance.CompleteCurrentRun);
+                () => HandleFinalEncounterCompleted(parent));
+        }
+
+        private void HandleFinalEncounterCompleted(Transform parent)
+        {
+            GameRunState runState = GameManager.Instance.CurrentRun;
+            if (runState.CurrentFloorNumber >= 2)
+            {
+                GameManager.Instance.CompleteCurrentRun();
+                return;
+            }
+
+            if (floorPortal != null)
+            {
+                return;
+            }
+
+            musicController?.FadeOutForEncounterComplete();
+            GameObject portalObject = new GameObject("Floor Portal");
+            portalObject.transform.SetParent(parent, false);
+            portalObject.transform.localPosition = Vector3.zero;
+            floorPortal = portalObject.AddComponent<FloorPortal>();
+            floorPortal.Initialize(BeginFloorTransition);
+        }
+
+        private void BeginFloorTransition()
+        {
+            if (floorTransitionRoutine != null)
+            {
+                return;
+            }
+
+            floorTransitionRoutine = StartCoroutine(TransitionToNextFloor());
+        }
+
+        private IEnumerator TransitionToNextFloor()
+        {
+            EnsureFloorTransitionOverlay();
+            floorTransitionCanvas.gameObject.SetActive(true);
+            GameplayInputGate.SetBlocked(true);
+            GameManager.Instance.SetGameplayPaused(true);
+
+            yield return FadeFloorTransition(Color.clear, Color.black, FloorFadeToBlackSeconds);
+            bool advanced = GameManager.Instance.AdvanceToNextFloor();
+            if (!advanced)
+            {
+                yield return FadeFloorTransition(Color.black, Color.clear, FloorFlashFadeSeconds);
+                EndFloorTransition();
+                yield break;
+            }
+
+            floorTransitionImage.color = Color.white;
+            yield return new WaitForSecondsRealtime(FloorFlashHoldSeconds);
+            yield return FadeFloorTransition(Color.white, Color.clear, FloorFlashFadeSeconds);
+            EndFloorTransition();
+        }
+
+        private IEnumerator FadeFloorTransition(Color start, Color end, float duration)
+        {
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                floorTransitionImage.color = Color.Lerp(start, end, Mathf.Clamp01(elapsed / duration));
+                yield return null;
+            }
+
+            floorTransitionImage.color = end;
+        }
+
+        private void EnsureFloorTransitionOverlay()
+        {
+            if (floorTransitionCanvas != null)
+            {
+                return;
+            }
+
+            GameObject canvasObject = new GameObject("Floor Transition Overlay");
+            canvasObject.transform.SetParent(transform, false);
+            floorTransitionCanvas = canvasObject.AddComponent<Canvas>();
+            floorTransitionCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            floorTransitionCanvas.sortingOrder = short.MaxValue;
+
+            GameObject imageObject = new GameObject("Transition Color");
+            imageObject.transform.SetParent(canvasObject.transform, false);
+            floorTransitionImage = imageObject.AddComponent<Image>();
+            floorTransitionImage.color = Color.clear;
+            floorTransitionImage.raycastTarget = true;
+            RectTransform rect = floorTransitionImage.rectTransform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+        }
+
+        private void EndFloorTransition()
+        {
+            floorTransitionRoutine = null;
+            if (floorTransitionCanvas != null)
+            {
+                floorTransitionCanvas.gameObject.SetActive(false);
+            }
+
+            if (GameManager.HasInstance)
+            {
+                GameManager.Instance.SetGameplayPaused(false);
+            }
+
+            GameplayInputGate.SetBlocked(false);
         }
 
         private void RollAndAddLoot(DungeonRoomRuntimeState roomState, LootSourceType sourceType, Vector2 position, Vector2 launchStart)

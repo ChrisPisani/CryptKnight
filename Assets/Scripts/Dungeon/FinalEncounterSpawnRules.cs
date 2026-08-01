@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using CryptKnight.Enemies;
 using UnityEngine;
 
 namespace CryptKnight.Dungeon
@@ -35,12 +36,49 @@ namespace CryptKnight.Dungeon
             }
 
             List<RoomEnemySpawn> spawns = new List<RoomEnemySpawn>(count);
+            List<EnemyKind> kinds = CreateEnemyKinds(configuration, count, random);
             for (int i = 0; i < count; i++)
             {
-                spawns.Add(new RoomEnemySpawn(configuration.EnemyKind, positions[i]));
+                spawns.Add(new RoomEnemySpawn(kinds[i], positions[i]));
             }
 
             return spawns;
+        }
+
+        private static List<EnemyKind> CreateEnemyKinds(
+            FinalEncounterConfiguration configuration,
+            int count,
+            System.Random random)
+        {
+            List<EnemyKind> kinds = new List<EnemyKind>(count);
+            if (configuration.Composition == FinalEncounterComposition.SingleKind)
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    kinds.Add(configuration.EnemyKind);
+                }
+
+                return kinds;
+            }
+
+            kinds.Add(EnemyKind.Zombie);
+            if (count > 1)
+            {
+                kinds.Add(EnemyKind.Spider);
+            }
+
+            while (kinds.Count < count)
+            {
+                kinds.Add(random.Next(2) == 0 ? EnemyKind.Zombie : EnemyKind.Spider);
+            }
+
+            for (int i = kinds.Count - 1; i > 0; i--)
+            {
+                int swapIndex = random.Next(i + 1);
+                (kinds[i], kinds[swapIndex]) = (kinds[swapIndex], kinds[i]);
+            }
+
+            return kinds;
         }
 
         private static int CreateStableSeed(int runSeed, Vector2Int roomPosition, int waveIndex)

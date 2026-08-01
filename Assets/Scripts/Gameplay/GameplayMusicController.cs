@@ -8,6 +8,7 @@ namespace CryptKnight.Gameplay
     public sealed class GameplayMusicController : MonoBehaviour
     {
         private const float FadeDuration = 5f;
+        private const float EncounterCompleteFadeDuration = 1.5f;
         private const string ExplorationMusicPath = "Audio/Game/crypt-knight-dungeon-exploration-loop";
         private const string BossMusicPath = "Audio/Game/crypt-knight-boss-room-heavy-fight-loop";
 
@@ -86,6 +87,18 @@ namespace CryptKnight.Gameplay
             targetClip = null;
         }
 
+        public void FadeOutForEncounterComplete()
+        {
+            StopTransition();
+            if (source == null || !source.isPlaying)
+            {
+                StopMusic();
+                return;
+            }
+
+            transition = StartCoroutine(FadeOutAndStop());
+        }
+
         private AudioClip GetClip(RoomType roomType)
         {
             return roomType == RoomType.Final ? bossClip : explorationClip;
@@ -122,13 +135,28 @@ namespace CryptKnight.Gameplay
             CompleteTransition();
         }
 
+        private IEnumerator FadeOutAndStop()
+        {
+            targetClip = null;
+            yield return FadeVolume(source.volume, 0f, EncounterCompleteFadeDuration);
+            source.Stop();
+            source.clip = null;
+            currentClip = null;
+            CompleteTransition();
+        }
+
         private IEnumerator FadeVolume(float start, float end)
         {
+            yield return FadeVolume(start, end, FadeDuration);
+        }
+
+        private IEnumerator FadeVolume(float start, float end, float duration)
+        {
             float elapsed = 0f;
-            while (elapsed < FadeDuration)
+            while (elapsed < duration)
             {
                 elapsed += Time.unscaledDeltaTime;
-                source.volume = Mathf.Lerp(start, end, Mathf.Clamp01(elapsed / FadeDuration));
+                source.volume = Mathf.Lerp(start, end, Mathf.Clamp01(elapsed / duration));
                 yield return null;
             }
 

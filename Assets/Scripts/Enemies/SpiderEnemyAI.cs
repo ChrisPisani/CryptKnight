@@ -32,11 +32,20 @@ namespace CryptKnight.Enemies
         private float jumpElapsed;
         private bool isJumping;
         private bool hasPendingAttack;
+        private EnemyDifficultyProfile difficultyProfile = EnemyDifficultyProfile.Get(
+            EnemyKind.Spider,
+            EnemyDifficulty.Normal);
 
         public Vector2 LastJumpPosition { get; private set; }
         public Vector2 LastShotDirection { get; private set; }
         public bool IsJumping => isJumping;
         public bool HasPendingAttack => hasPendingAttack;
+        public float CurrentJumpInterval => JumpIntervalSeconds / difficultyProfile.AttackSpeedMultiplier;
+        public float CurrentAttackDelay => AttackDelayAfterJumpSeconds / difficultyProfile.AttackSpeedMultiplier;
+        public float CurrentJumpDuration => JumpDurationSeconds / difficultyProfile.MovementSpeedMultiplier;
+        public float CurrentProjectileSpeed => ProjectileSpeed * difficultyProfile.ProjectileSpeedMultiplier;
+        public int CurrentProjectileDamage => ProjectileDamage * difficultyProfile.DamageMultiplier;
+        public int CurrentProjectileCount => difficultyProfile.ProjectileCount;
 
         private void Awake()
         {
@@ -66,15 +75,23 @@ namespace CryptKnight.Enemies
             TryAttack(Time.time);
         }
 
-        public void Initialize(Transform playerTarget, Transform projectileRoot, Rect playableBounds, float phaseOffsetSeconds = 0f)
+        public void Initialize(
+            Transform playerTarget,
+            Transform projectileRoot,
+            Rect playableBounds,
+            float phaseOffsetSeconds = 0f,
+            EnemyDifficulty difficulty = EnemyDifficulty.Normal)
         {
             player = playerTarget;
             projectileParent = projectileRoot;
             roomBounds = playableBounds;
             body = body != null ? body : GetComponent<Rigidbody2D>();
             animator = animator != null ? animator : GetComponentInChildren<EnemySpriteAnimator>();
+            difficultyProfile = EnemyDifficultyProfile.Get(EnemyKind.Spider, difficulty);
             ConfigureBody();
-            nextJumpTime = Time.time + JumpIntervalSeconds + Mathf.Max(0f, phaseOffsetSeconds);
+            nextJumpTime = Time.time
+                + CurrentJumpInterval
+                + Mathf.Max(0f, phaseOffsetSeconds) / difficultyProfile.AttackSpeedMultiplier;
         }
 
         public bool TryAttack(float currentTime)
@@ -109,7 +126,7 @@ namespace CryptKnight.Enemies
 
             // Cap each step so a single long editor/game frame does not make the spider appear to teleport.
             jumpElapsed += Mathf.Min(Mathf.Max(0f, deltaTime), MaxJumpStepSeconds);
-            float progress = Mathf.Clamp01(jumpElapsed / JumpDurationSeconds);
+            float progress = Mathf.Clamp01(jumpElapsed / CurrentJumpDuration);
             float easedProgress = Mathf.SmoothStep(0f, 1f, progress);
             SetPosition(Vector2.Lerp(jumpStartPosition, jumpEndPosition, easedProgress));
 
@@ -139,7 +156,7 @@ namespace CryptKnight.Enemies
             hasPendingAttack = false;
             animator?.PlayAttack(shotDirection);
             FireProjectile(shotDirection);
-            nextJumpTime = currentTime + JumpIntervalSeconds;
+            nextJumpTime = currentTime + CurrentJumpInterval;
             return true;
         }
 
@@ -170,7 +187,7 @@ namespace CryptKnight.Enemies
         {
             // Separate the jump and attack beats so the spider movement is readable before it shoots.
             hasPendingAttack = true;
-            pendingAttackTime = currentTime + AttackDelayAfterJumpSeconds;
+            pendingAttackTime = currentTime + CurrentAttackDelay;
         }
 
         private bool CanDetectPlayer()
@@ -181,20 +198,25 @@ namespace CryptKnight.Enemies
         private void FireProjectile(Vector2 direction)
         {
             LastShotDirection = direction;
-            ProjectileFactory.CreateCircleProjectile(
-                "Spider Projectile",
-                (Vector2)transform.position + direction * 0.65f,
-                direction,
-                DamageableTarget.Player,
-                ProjectileDamage,
-                ProjectileSpeed,
-                ProjectileRadius,
-                ProjectileLifetimeSeconds,
-                new Color(0.85f, 0.25f, 1f, 1f),
-                projectileParent != null ? projectileParent : transform.parent,
-                roomBounds,
-                ProjectileBounces,
-                ProjectileVisualStyle.SpiderPurple);
+            Vector2[] shotDirections = EnemyProjectileSpread.CreateDirections(direction, CurrentProjectileCount);
+            for (int i = 0; i < shotDirections.Length; i++)
+            {
+                Vector2 shotDirection = shotDirections[i];
+                ProjectileFactory.CreateCircleProjectile(
+                    "Spider Projectile",
+                    (Vector2)transform.position + shotDirection * 0.65f,
+                    shotDirection,
+                    DamageableTarget.Player,
+                    CurrentProjectileDamage,
+                    CurrentProjectileSpeed,
+                    ProjectileRadius,
+                    ProjectileLifetimeSeconds,
+                    new Color(0.85f, 0.25f, 1f, 1f),
+                    projectileParent != null ? projectileParent : transform.parent,
+                    roomBounds,
+                    ProjectileBounces,
+                    ProjectileVisualStyle.SpiderPurple);
+            }
         }
 
         private void SetPosition(Vector2 position)

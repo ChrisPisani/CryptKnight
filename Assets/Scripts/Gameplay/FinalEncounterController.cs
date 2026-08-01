@@ -120,7 +120,11 @@ namespace CryptKnight.Gameplay
             for (int i = 0; i < spawns.Count; i++)
             {
                 RoomEnemySpawn spawn = spawns[i];
-                RoomEnemyInstance enemy = roomState.AddEnemy(spawn.Kind, spawn.Position, configuration.EnemyMaxHealth);
+                RoomEnemyInstance enemy = roomState.AddEnemy(
+                    spawn.Kind,
+                    spawn.Position,
+                    configuration.GetEnemyMaxHealth(spawn.Kind),
+                    configuration.Difficulty);
                 spawnEnemy(enemy);
             }
 

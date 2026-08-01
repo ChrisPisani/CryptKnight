@@ -1,8 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
+using CryptKnight.Application;
+using CryptKnight.Data;
 using CryptKnight.Dungeon;
 using CryptKnight.Enemies;
 using CryptKnight.Gameplay;
+using CryptKnight.Loot;
+using CryptKnight.Player;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -64,6 +69,30 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
+        public void HardFinaleMixesEnemyTypes()
+        {
+            FinalEncounterConfiguration configuration =
+                FinalEncounterConfiguration.CreateDefault(EnemyDifficulty.Hard);
+            IReadOnlyList<RoomEnemySpawn> first = new FinalEncounterSpawnRules().CreateWave(
+                configuration,
+                0,
+                24680,
+                Vector2Int.one);
+            IReadOnlyList<RoomEnemySpawn> second = new FinalEncounterSpawnRules().CreateWave(
+                configuration,
+                0,
+                24680,
+                Vector2Int.one);
+
+            Assert.That(first, Has.Count.EqualTo(4));
+            Assert.That(first[0].Kind, Is.EqualTo(second[0].Kind));
+            Assert.That(ContainsKind(first, EnemyKind.Zombie), Is.True);
+            Assert.That(ContainsKind(first, EnemyKind.Spider), Is.True);
+            Assert.That(configuration.GetEnemyMaxHealth(EnemyKind.Zombie), Is.EqualTo(10));
+            Assert.That(configuration.GetEnemyMaxHealth(EnemyKind.Spider), Is.EqualTo(6));
+        }
+
+        [Test]
         public void WaveWaitsUntilEnemiesAreGone()
         {
             FinalEncounterState encounter = new FinalEncounterState(FinalEncounterConfiguration.CreateDefault());
@@ -102,13 +131,52 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
-        public void FinalRoomCannotBeLeft()
+        public void FinalRoomUnlocksAfterFight()
         {
-            DungeonRoomRuntimeState room = new DungeonRoomRuntimeState(Vector2Int.zero, RoomType.Final);
+            FinalEncounterConfiguration configuration = new FinalEncounterConfiguration(
+                new[] { 1 },
+                0f,
+                EnemyKind.Zombie,
+                5);
+            DungeonRoom finalRoom = new DungeonRoom(Vector2Int.zero, RoomType.Final);
+            DungeonRoom neighbor = new DungeonRoom(Vector2Int.right, RoomType.Enemy);
+            finalRoom.Connect(RoomDirection.East, Vector2Int.right);
+            neighbor.Connect(RoomDirection.West, Vector2Int.zero);
+            DungeonLayout layout = new DungeonLayout(
+                2,
+                1,
+                new[] { finalRoom, neighbor },
+                Vector2Int.zero,
+                Vector2Int.zero);
+            DungeonRoomRuntimeState roomState = new DungeonRoomRuntimeState(Vector2Int.zero, RoomType.Final);
+            roomState.InitializeFinalEncounter(configuration);
+            Dictionary<Vector2Int, DungeonRoomRuntimeState> roomStates =
+                new Dictionary<Vector2Int, DungeonRoomRuntimeState>
+                {
+                    { Vector2Int.zero, roomState },
+                    { Vector2Int.right, new DungeonRoomRuntimeState(Vector2Int.right, RoomType.Enemy) }
+                };
+            DungeonRunState dungeon = new DungeonRunState(
+                layout,
+                roomStates,
+                new LootTableConfiguration(
+                    Array.Empty<LootItemDefinition>(),
+                    new Dictionary<LootSourceType, float>()),
+                12345,
+                configuration);
+            GameplaySceneController controller = CreateGameplayController();
+            SetPrivateField(controller, "dungeonRun", dungeon);
+            SetPrivateField(controller, "roomNavigator", dungeon.Navigator);
 
-            Assert.That(room.IsLocked, Is.True);
-            room.SetEnemyCount(0);
-            Assert.That(room.IsLocked, Is.True);
+            Assert.That(roomState.IsLocked, Is.True);
+            Assert.That(controller.CanTravelFromCurrentRoom(), Is.False);
+
+            roomState.FinalEncounter.BeginNextIntermission();
+            roomState.FinalEncounter.StartCurrentWave();
+            roomState.FinalEncounter.RecordEnemyDefeated();
+
+            Assert.That(roomState.IsLocked, Is.False);
+            Assert.That(controller.CanTravelFromCurrentRoom(), Is.True);
         }
 
         [Test]
@@ -238,6 +306,128 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
+        public void PortalOnlyWorksOnce()
+        {
+            GameObject portalObject = new GameObject("Portal");
+            createdObjects.Add(portalObject);
+            FloorPortal portal = portalObject.AddComponent<FloorPortal>();
+            int activations = 0;
+            portal.Initialize(() => activations++);
+
+            Assert.That(portal.TryActivate(), Is.False);
+            Assert.That(portal.AdvanceAnimation(2f), Is.True);
+            Assert.That(portal.TryActivate(), Is.True);
+            Assert.That(portal.TryActivate(), Is.False);
+            Assert.That(portal.IsUsed, Is.True);
+            Assert.That(activations, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void PortalUsesProvidedAssets()
+        {
+            GameObject portalObject = new GameObject("Portal");
+            createdObjects.Add(portalObject);
+            FloorPortal portal = portalObject.AddComponent<FloorPortal>();
+            portal.Initialize(() => { });
+            CircleCollider2D interaction = portalObject.GetComponent<CircleCollider2D>();
+            AudioSource idleAudio = portalObject.GetComponent<AudioSource>();
+
+            Assert.That(portal.AnimationFrameCount, Is.EqualTo(8));
+            Assert.That(portal.IsInteractable, Is.False);
+            Assert.That(interaction.enabled, Is.False);
+            Assert.That(idleAudio.clip, Is.Not.Null);
+            Assert.That(idleAudio.loop, Is.True);
+
+            portal.AdvanceAnimation(2f);
+
+            Assert.That(portal.IsInteractable, Is.True);
+            Assert.That(interaction.enabled, Is.True);
+            Assert.That(
+                Resources.Load<AudioClip>("Audio/SFX/crypt-knight-sfx-portal-enter"),
+                Is.Not.Null);
+        }
+
+        [Test]
+        public void FloorOneFightOpensPortal()
+        {
+            GameManager manager = GameManager.Instance;
+            createdObjects.Add(manager.gameObject);
+            GameRunState run = manager.StartNewRun(12345);
+            GameplaySceneController controller = CreateGameplayController();
+            GameObject room = new GameObject("Final Room");
+            createdObjects.Add(room);
+
+            InvokePrivate(controller, "HandleFinalEncounterCompleted", room.transform);
+            InvokePrivate(controller, "HandleFinalEncounterCompleted", room.transform);
+
+            Assert.That(run.IsActive, Is.True);
+            Assert.That(room.GetComponentsInChildren<FloorPortal>(), Has.Length.EqualTo(1));
+        }
+
+        [Test]
+        public void FloorTwoFightCompletesRun()
+        {
+            GameManager manager = GameManager.Instance;
+            createdObjects.Add(manager.gameObject);
+            GameRunState run = manager.StartNewRun(54321);
+            Assert.That(manager.AdvanceToNextFloor(), Is.True);
+            GameplaySceneController controller = CreateGameplayController();
+            GameObject room = new GameObject("Final Room");
+            createdObjects.Add(room);
+
+            InvokePrivate(controller, "HandleFinalEncounterCompleted", room.transform);
+
+            Assert.That(run.Status, Is.EqualTo(GameRunStatus.Completed));
+            Assert.That(room.GetComponentInChildren<FloorPortal>(), Is.Null);
+        }
+
+        [Test]
+        public void PortalPromptTracksPlayerRange()
+        {
+            GameObject portalObject = new GameObject("Portal");
+            createdObjects.Add(portalObject);
+            FloorPortal portal = portalObject.AddComponent<FloorPortal>();
+            portal.Initialize(() => { });
+            portal.AdvanceAnimation(2f);
+            GameObject prompt = portalObject.transform.Find("Portal Prompt").gameObject;
+
+            GameObject obstacle = new GameObject("Obstacle");
+            createdObjects.Add(obstacle);
+            BoxCollider2D obstacleCollider = obstacle.AddComponent<BoxCollider2D>();
+            InvokePrivate(portal, "OnTriggerEnter2D", obstacleCollider);
+            Assert.That(prompt.activeSelf, Is.False);
+
+            GameObject player = new GameObject("Player");
+            createdObjects.Add(player);
+            player.AddComponent<PlayerController>();
+            CircleCollider2D playerCollider = player.AddComponent<CircleCollider2D>();
+            InvokePrivate(portal, "OnTriggerEnter2D", playerCollider);
+            Assert.That(prompt.activeSelf, Is.True);
+            Assert.That(portal.ShouldPlayIdleAudio, Is.True);
+
+            GameManager manager = GameManager.Instance;
+            createdObjects.Add(manager.gameObject);
+            InvokePrivate(portal, "Update");
+
+            InvokePrivate(portal, "OnTriggerExit2D", obstacleCollider);
+            Assert.That(prompt.activeSelf, Is.True);
+            InvokePrivate(portal, "OnTriggerExit2D", playerCollider);
+            Assert.That(prompt.activeSelf, Is.False);
+            Assert.That(portal.ShouldPlayIdleAudio, Is.False);
+        }
+
+        [Test]
+        public void PortalNeedsCallback()
+        {
+            GameObject portalObject = new GameObject("Portal");
+            createdObjects.Add(portalObject);
+            FloorPortal portal = portalObject.AddComponent<FloorPortal>();
+
+            Assert.Throws<ArgumentNullException>(() => portal.Initialize(null));
+            Assert.That(portal.TryActivate(), Is.False);
+        }
+
+        [Test]
         public void BadControllerSetupIsRejected()
         {
             FinalEncounterConfiguration configuration = FinalEncounterConfiguration.CreateDefault();
@@ -260,6 +450,44 @@ namespace CryptKnight.Tests.EditMode
             GameObject controllerObject = new GameObject("Final Encounter Test");
             createdObjects.Add(controllerObject);
             return controllerObject.AddComponent<FinalEncounterController>();
+        }
+
+        private GameplaySceneController CreateGameplayController()
+        {
+            GameObject controllerObject = new GameObject("Gameplay Test");
+            createdObjects.Add(controllerObject);
+            return controllerObject.AddComponent<GameplaySceneController>();
+        }
+
+        private static bool ContainsKind(IReadOnlyList<RoomEnemySpawn> spawns, EnemyKind kind)
+        {
+            for (int i = 0; i < spawns.Count; i++)
+            {
+                if (spawns[i].Kind == kind)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static void InvokePrivate(object target, string methodName, params object[] arguments)
+        {
+            MethodInfo method = target.GetType().GetMethod(
+                methodName,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(method, Is.Not.Null);
+            method.Invoke(target, arguments);
+        }
+
+        private static void SetPrivateField(object target, string fieldName, object value)
+        {
+            FieldInfo field = target.GetType().GetField(
+                fieldName,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(field, Is.Not.Null);
+            field.SetValue(target, value);
         }
     }
 }

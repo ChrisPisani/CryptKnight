@@ -4,6 +4,12 @@ using CryptKnight.Enemies;
 
 namespace CryptKnight.Dungeon
 {
+    public enum FinalEncounterComposition
+    {
+        SingleKind,
+        Mixed
+    }
+
     public sealed class FinalEncounterConfiguration
     {
         private readonly int[] waveEnemyCounts;
@@ -12,7 +18,9 @@ namespace CryptKnight.Dungeon
             IReadOnlyList<int> enemyCounts,
             float intermissionSeconds,
             EnemyKind enemyKind,
-            int enemyMaxHealth)
+            int enemyMaxHealth,
+            EnemyDifficulty difficulty = EnemyDifficulty.Normal,
+            FinalEncounterComposition composition = FinalEncounterComposition.SingleKind)
         {
             if (enemyCounts == null || enemyCounts.Count == 0)
             {
@@ -28,6 +36,8 @@ namespace CryptKnight.Dungeon
             IntermissionSeconds = Math.Max(0f, intermissionSeconds);
             EnemyKind = enemyKind;
             EnemyMaxHealth = Math.Max(1, enemyMaxHealth);
+            Difficulty = difficulty;
+            Composition = composition;
         }
 
         public IReadOnlyList<int> WaveEnemyCounts => waveEnemyCounts;
@@ -35,14 +45,26 @@ namespace CryptKnight.Dungeon
         public float IntermissionSeconds { get; }
         public EnemyKind EnemyKind { get; }
         public int EnemyMaxHealth { get; }
+        public EnemyDifficulty Difficulty { get; }
+        public FinalEncounterComposition Composition { get; }
 
         public static FinalEncounterConfiguration CreateDefault()
         {
+            return CreateDefault(EnemyDifficulty.Normal);
+        }
+
+        public static FinalEncounterConfiguration CreateDefault(EnemyDifficulty difficulty)
+        {
+            EnemyDifficultyProfile zombieProfile = EnemyDifficultyProfile.Get(EnemyKind.Zombie, difficulty);
             return new FinalEncounterConfiguration(
                 new[] { 4, 6, 8 },
                 2f,
                 EnemyKind.Zombie,
-                5);
+                zombieProfile.MaxHealth,
+                difficulty,
+                difficulty == EnemyDifficulty.Hard
+                    ? FinalEncounterComposition.Mixed
+                    : FinalEncounterComposition.SingleKind);
         }
 
         public int GetEnemyCount(int waveIndex)
@@ -53,6 +75,13 @@ namespace CryptKnight.Dungeon
             }
 
             return waveEnemyCounts[waveIndex];
+        }
+
+        public int GetEnemyMaxHealth(EnemyKind kind)
+        {
+            return Composition == FinalEncounterComposition.Mixed
+                ? EnemyDifficultyProfile.Get(kind, Difficulty).MaxHealth
+                : EnemyMaxHealth;
         }
     }
 }

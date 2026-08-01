@@ -30,6 +30,7 @@ namespace CryptKnight.Enemies
         private int frameIndex;
         private bool isMoving;
         private bool isAttacking;
+        private float animationSpeedMultiplier = 1f;
 
         private void Awake()
         {
@@ -56,12 +57,13 @@ namespace CryptKnight.Enemies
                 return;
             }
 
-            AdvanceLoopingAnimation(frames, MoveFrameDuration);
+            AdvanceLoopingAnimation(frames, MoveFrameDuration / animationSpeedMultiplier);
         }
 
-        public void Initialize(EnemyKind kind)
+        public void Initialize(EnemyKind kind, float speedMultiplier = 1f)
         {
             enemyKind = kind;
+            animationSpeedMultiplier = Mathf.Max(0.1f, speedMultiplier);
             spriteRenderer = spriteRenderer != null ? spriteRenderer : GetComponent<SpriteRenderer>();
             baseLocalScale = transform.localScale;
             baseLocalPosition = transform.localPosition;
@@ -151,12 +153,13 @@ namespace CryptKnight.Enemies
             }
 
             elapsed += Time.deltaTime;
-            if (elapsed < AttackFrameDuration)
+            float frameDuration = AttackFrameDuration / animationSpeedMultiplier;
+            if (elapsed < frameDuration)
             {
                 return;
             }
 
-            elapsed -= AttackFrameDuration;
+            elapsed -= frameDuration;
             frameIndex++;
             if (frameIndex >= frames.Count)
             {

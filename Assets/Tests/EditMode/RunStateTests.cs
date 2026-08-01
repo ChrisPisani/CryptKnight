@@ -1,5 +1,7 @@
 using CryptKnight.Application;
 using CryptKnight.Data;
+using CryptKnight.Dungeon;
+using CryptKnight.Enemies;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -15,6 +17,7 @@ namespace CryptKnight.Tests.EditMode
             Assert.That(runState.Status, Is.EqualTo(GameRunStatus.Active));
             Assert.That(runState.RunNumber, Is.EqualTo(2));
             Assert.That(runState.Seed, Is.EqualTo(12345));
+            Assert.That(runState.CurrentFloorNumber, Is.EqualTo(1));
             Assert.That(runState.DungeonWidth, Is.EqualTo(4));
             Assert.That(runState.DungeonHeight, Is.EqualTo(4));
             Assert.That(runState.CurrentHealth, Is.EqualTo(6));
@@ -297,6 +300,210 @@ namespace CryptKnight.Tests.EditMode
             Assert.That(stats.ProjectileBounces, Is.EqualTo(0));
             Assert.That(stats.ProjectileSizeMultiplier, Is.EqualTo(0.25f));
             Assert.That(stats.AttackCooldownSeconds, Is.EqualTo(100f).Within(0.001f));
+        }
+
+        [Test]
+        public void CustomSeedStartsRun()
+        {
+            GameManager manager = GameManager.Instance;
+            try
+            {
+                GameRunState run = manager.StartNewRun(24680);
+
+                Assert.That(run.Seed, Is.EqualTo(24680));
+                Assert.That(run.Dungeon.FloorSeed, Is.EqualTo(24680));
+                Assert.That(run.CurrentFloorNumber, Is.EqualTo(1));
+            }
+            finally
+            {
+                Object.DestroyImmediate(manager.gameObject);
+            }
+        }
+
+        [Test]
+        public void RandomSeedStaysInRange()
+        {
+            GameManager manager = GameManager.Instance;
+            try
+            {
+                GameRunState run = manager.StartNewRun();
+
+                Assert.That(run.Seed, Is.InRange(100000, 999999));
+            }
+            finally
+            {
+                Object.DestroyImmediate(manager.gameObject);
+            }
+        }
+
+        [Test]
+        public void BadSeedIsRejected()
+        {
+            Assert.That(RunSeedUtility.TryParse("123456", out int seed), Is.True);
+            Assert.That(seed, Is.EqualTo(123456));
+            Assert.That(RunSeedUtility.TryParse("0", out _), Is.False);
+            Assert.That(RunSeedUtility.TryParse("1000000000", out _), Is.False);
+            Assert.That(RunSeedUtility.TryParse("crypt", out _), Is.False);
+            Assert.Throws<System.ArgumentOutOfRangeException>(() => RunSeedUtility.GetFloorSeed(0, 1));
+            Assert.Throws<System.ArgumentOutOfRangeException>(() => RunSeedUtility.GetFloorSeed(12345, 3));
+        }
+
+        [Test]
+        public void SeedDisplayUsesRunSeed()
+        {
+            Assert.That(RunSeedUtility.FormatForHud(24680), Is.EqualTo("Seed: 24680"));
+        }
+
+        [Test]
+        public void SameSeedBuildsSameFloors()
+        {
+            int firstFloorSeed = RunSeedUtility.GetFloorSeed(13579, 1);
+            int firstHardSeed = RunSeedUtility.GetFloorSeed(13579, 2);
+            int secondHardSeed = RunSeedUtility.GetFloorSeed(13579, 2);
+            DungeonRunState firstHardFloor = DungeonRunStateFactory.Create(
+                4,
+                4,
+                firstHardSeed,
+                2,
+                EnemyDifficulty.Hard,
+                false);
+            DungeonRunState secondHardFloor = DungeonRunStateFactory.Create(
+                4,
+                4,
+                secondHardSeed,
+                2,
+                EnemyDifficulty.Hard,
+                false);
+
+            Assert.That(firstFloorSeed, Is.EqualTo(13579));
+            Assert.That(firstHardSeed, Is.EqualTo(secondHardSeed));
+            Assert.That(firstHardFloor.Layout.StartPosition, Is.EqualTo(secondHardFloor.Layout.StartPosition));
+            Assert.That(firstHardFloor.Layout.FinalPosition, Is.EqualTo(secondHardFloor.Layout.FinalPosition));
+        }
+
+        [Test]
+        public void PlayerStateCarriesBetweenFloors()
+        {
+            GameRunState run = GameRunState.CreateNewRun(1, 24680, 4, 4, 6);
+            run.InitializeDungeon(DungeonRunStateFactory.Create(4, 4, 24680));
+            run.ApplyDamage(1);
+            run.AddKeys(2);
+            run.AddCollectedItem("damage_up", "Chili Pepper");
+            run.AddStatModifier(new PlayerStatModifier(damageBonus: 1));
+            DungeonRunState hardFloor = DungeonRunStateFactory.Create(
+                4,
+                4,
+                RunSeedUtility.GetFloorSeed(24680, 2),
+                2,
+                EnemyDifficulty.Hard,
+                false);
+
+            Assert.That(run.AdvanceToDungeon(hardFloor), Is.True);
+
+            Assert.That(run.CurrentFloorNumber, Is.EqualTo(2));
+            Assert.That(run.CurrentHealth, Is.EqualTo(5));
+            Assert.That(run.KeyCount, Is.EqualTo(2));
+            Assert.That(run.CollectedItems, Has.Count.EqualTo(1));
+            Assert.That(run.PlayerStats.Damage, Is.EqualTo(2));
+            Assert.That(run.AdvanceToDungeon(hardFloor), Is.False);
+        }
+
+        [Test]
+        public void SecondFloorHasNoStarterGift()
+        {
+            DungeonRunState hardFloor = DungeonRunStateFactory.Create(
+                4,
+                4,
+                RunSeedUtility.GetFloorSeed(12345, 2),
+                2,
+                EnemyDifficulty.Hard,
+                false);
+            DungeonRoomRuntimeState starter = hardFloor.GetRoomState(hardFloor.Layout.StartPosition);
+
+            Assert.That(starter.Loot, Is.Empty);
+            Assert.That(hardFloor.FloorNumber, Is.EqualTo(2));
+            Assert.That(hardFloor.Difficulty, Is.EqualTo(EnemyDifficulty.Hard));
+        }
+
+        [Test]
+        public void PortalAdvancesToFloorTwo()
+        {
+            GameManager manager = GameManager.Instance;
+            try
+            {
+                GameRunState run = manager.StartNewRun(97531);
+                run.ApplyDamage(2);
+
+                Assert.That(manager.AdvanceToNextFloor(), Is.True);
+                Assert.That(run.CurrentFloorNumber, Is.EqualTo(2));
+                Assert.That(run.Dungeon.Difficulty, Is.EqualTo(EnemyDifficulty.Hard));
+                Assert.That(run.CurrentHealth, Is.EqualTo(run.MaxHealth));
+                Assert.That(run.IsActive, Is.True);
+                Assert.That(manager.AdvanceToNextFloor(), Is.False);
+            }
+            finally
+            {
+                Object.DestroyImmediate(manager.gameObject);
+            }
+        }
+
+        [Test]
+        public void FloorAdvanceRestoresFullHealth()
+        {
+            GameManager manager = GameManager.Instance;
+            try
+            {
+                GameRunState run = manager.StartNewRun(13579);
+                run.ApplyDamage(4);
+
+                Assert.That(manager.AdvanceToNextFloor(), Is.True);
+                Assert.That(run.CurrentHealth, Is.EqualTo(6));
+                Assert.That(run.CurrentHealth, Is.EqualTo(run.MaxHealth));
+            }
+            finally
+            {
+                Object.DestroyImmediate(manager.gameObject);
+            }
+        }
+
+        [Test]
+        public void FloorHealUsesCurrentMaxHealth()
+        {
+            GameManager manager = GameManager.Instance;
+            try
+            {
+                GameRunState run = manager.StartNewRun(24680);
+                run.AddStatModifier(new PlayerStatModifier(maxHealthBonus: 4));
+                run.ApplyDamage(5);
+
+                Assert.That(manager.AdvanceToNextFloor(), Is.True);
+                Assert.That(run.MaxHealth, Is.EqualTo(10));
+                Assert.That(run.CurrentHealth, Is.EqualTo(10));
+            }
+            finally
+            {
+                Object.DestroyImmediate(manager.gameObject);
+            }
+        }
+
+        [Test]
+        public void FailedFloorAdvanceDoesNotHeal()
+        {
+            GameManager manager = GameManager.Instance;
+            try
+            {
+                GameRunState run = manager.StartNewRun(86420);
+                Assert.That(manager.AdvanceToNextFloor(), Is.True);
+                run.ApplyDamage(2);
+                int damagedHealth = run.CurrentHealth;
+
+                Assert.That(manager.AdvanceToNextFloor(), Is.False);
+                Assert.That(run.CurrentHealth, Is.EqualTo(damagedHealth));
+            }
+            finally
+            {
+                Object.DestroyImmediate(manager.gameObject);
+            }
         }
 
         [Test]

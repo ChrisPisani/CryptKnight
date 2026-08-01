@@ -5,6 +5,48 @@ using CryptKnight.Dungeon;
 
 namespace CryptKnight.Data
 {
+    public static class RunSeedUtility
+    {
+        public const int MinimumSeed = 1;
+        public const int MaximumSeed = 999999999;
+        private const int FloorTwoSalt = 0x464C4F32;
+
+        public static bool IsValid(int seed)
+        {
+            return seed >= MinimumSeed && seed <= MaximumSeed;
+        }
+
+        public static bool TryParse(string value, out int seed)
+        {
+            return int.TryParse(value?.Trim(), out seed) && IsValid(seed);
+        }
+
+        public static int GetFloorSeed(int runSeed, int floorNumber)
+        {
+            if (!IsValid(runSeed))
+            {
+                throw new ArgumentOutOfRangeException(nameof(runSeed));
+            }
+
+            if (floorNumber == 1)
+            {
+                return runSeed;
+            }
+
+            if (floorNumber == 2)
+            {
+                return new Random(runSeed ^ FloorTwoSalt).Next(MinimumSeed, MaximumSeed + 1);
+            }
+
+            throw new ArgumentOutOfRangeException(nameof(floorNumber));
+        }
+
+        public static string FormatForHud(int runSeed)
+        {
+            return $"Seed: {runSeed}";
+        }
+    }
+
     public enum GameRunStatus
     {
         NotStarted,
@@ -42,6 +84,7 @@ namespace CryptKnight.Data
         public GameRunStatus Status { get; private set; }
         public int RunNumber { get; private set; }
         public int Seed { get; private set; }
+        public int CurrentFloorNumber { get; private set; }
         public int DungeonWidth { get; private set; }
         public int DungeonHeight { get; private set; }
         public int CurrentHealth { get; private set; }
@@ -57,6 +100,19 @@ namespace CryptKnight.Data
         public void InitializeDungeon(DungeonRunState dungeonState)
         {
             Dungeon = dungeonState ?? throw new ArgumentNullException(nameof(dungeonState));
+            CurrentFloorNumber = dungeonState.FloorNumber;
+        }
+
+        public bool AdvanceToDungeon(DungeonRunState dungeonState)
+        {
+            if (!IsActive || dungeonState == null || dungeonState.FloorNumber != CurrentFloorNumber + 1)
+            {
+                return false;
+            }
+
+            Dungeon = dungeonState;
+            CurrentFloorNumber = dungeonState.FloorNumber;
+            return true;
         }
 
         public static GameRunState CreateNewRun(int runNumber, int seed, int dungeonWidth, int dungeonHeight, int maxHealth)
@@ -71,6 +127,7 @@ namespace CryptKnight.Data
                 Status = GameRunStatus.Active,
                 RunNumber = runNumber,
                 Seed = seed,
+                CurrentFloorNumber = 1,
                 DungeonWidth = dungeonWidth,
                 DungeonHeight = dungeonHeight,
                 PlayerStats = new PlayerRuntimeStats(playerBaseStats),
