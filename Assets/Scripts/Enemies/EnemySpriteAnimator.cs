@@ -90,6 +90,11 @@ namespace CryptKnight.Enemies
             }
         }
 
+        public static void Prewarm(EnemyKind kind)
+        {
+            GetFrames(kind);
+        }
+
         public void SetMovement(Vector2 movement)
         {
             isMoving = movement.sqrMagnitude > 0.001f;

@@ -48,6 +48,7 @@ namespace CryptKnight.Gameplay
         private Canvas floorTransitionCanvas;
         private Image floorTransitionImage;
         private Coroutine runEndRoutine;
+        private Coroutine combatVisualPrewarmRoutine;
         private readonly DungeonRoomEnvironmentBuilder environmentBuilder = new DungeonRoomEnvironmentBuilder();
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -71,10 +72,20 @@ namespace CryptKnight.Gameplay
             musicController = GetComponent<GameplayMusicController>() ?? gameObject.AddComponent<GameplayMusicController>();
             GameAudioSettings.VolumesChanged += HandleAudioSettingsChanged;
             GameManager.Instance.RunStateChanged += HandleRunStateChanged;
+            if (UnityEngine.Application.isPlaying && combatVisualPrewarmRoutine == null)
+            {
+                combatVisualPrewarmRoutine = StartCoroutine(PrewarmCombatVisuals());
+            }
         }
 
         private void OnDisable()
         {
+            if (combatVisualPrewarmRoutine != null)
+            {
+                StopCoroutine(combatVisualPrewarmRoutine);
+                combatVisualPrewarmRoutine = null;
+            }
+
             if (GameManager.HasInstance)
             {
                 GameManager.Instance.RunStateChanged -= HandleRunStateChanged;
@@ -117,6 +128,18 @@ namespace CryptKnight.Gameplay
             }
 
             ClearGameplayScene();
+        }
+
+        private IEnumerator PrewarmCombatVisuals()
+        {
+            // Spread one-time Resources loads over idle menu frames instead of the first boss wave.
+            yield return null;
+            EnemySpriteAnimator.Prewarm(EnemyKind.Zombie);
+            yield return null;
+            ProjectileFactory.PrewarmEnemyVisuals();
+            yield return null;
+            EnemySpriteAnimator.Prewarm(EnemyKind.Spider);
+            combatVisualPrewarmRoutine = null;
         }
 
         private IEnumerator ClearGameplayAfterFade()
@@ -213,7 +236,7 @@ namespace CryptKnight.Gameplay
                 return false;
             }
 
-            if (roomNavigator == null || !roomNavigator.TryMove(direction))
+            if (dungeonRun == null || !dungeonRun.TryMove(direction))
             {
                 return false;
             }
@@ -474,7 +497,7 @@ namespace CryptKnight.Gameplay
                 },
                 chestInstance.RewardSeed,
                 // Mark chest as opened for deletion
-                () => roomState.MarkChestOpened(chestInstance.Id));
+                () => dungeonRun.MarkChestOpened(roomState.GridPosition, chestInstance.Id));
         }
 
         private void CreateRoomLoot(Transform parent, DungeonRoomRuntimeState roomState)
@@ -509,7 +532,10 @@ namespace CryptKnight.Gameplay
                 return;
             }
 
-            bool roomCleared = roomState.MarkEnemyDefeated(enemyId);
+            DungeonRunState dungeonRun = GameManager.Instance.CurrentRun?.Dungeon;
+            bool roomCleared = dungeonRun != null
+                ? dungeonRun.MarkEnemyDefeated(roomState.GridPosition, enemyId)
+                : roomState.MarkEnemyDefeated(enemyId);
             // Enemy and room-clear rewards are intentionally separate rolls, so the last enemy can drop both.
             RollAndAddLoot(roomState, LootSourceType.Enemy, enemyPosition + EnemyDropOffset, enemyPosition);
             if (roomState.RoomType == RoomType.Final)

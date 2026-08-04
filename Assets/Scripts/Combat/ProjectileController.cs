@@ -30,12 +30,14 @@ namespace CryptKnight.Combat
             bouncesRemaining = 0;
 
             Rigidbody2D body = GetComponent<Rigidbody2D>();
+            body.simulated = true;
             body.gravityScale = 0f;
             body.freezeRotation = true;
             body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
             SetVelocityAndFacing(body, direction.normalized * speed);
 
             Collider2D projectileCollider = GetComponent<Collider2D>();
+            projectileCollider.enabled = true;
             projectileCollider.isTrigger = true;
         }
 
@@ -56,7 +58,7 @@ namespace CryptKnight.Combat
 
             if (isConfigured && Time.time >= spawnTime + lifetimeSeconds)
             {
-                Destroy(gameObject);
+                StopAndDestroy();
             }
         }
 
@@ -76,6 +78,8 @@ namespace CryptKnight.Combat
             IDamageable damageable = other.GetComponentInParent<IDamageable>();
             if (damageable != null && damageable.TargetType == targetType)
             {
+                // Destroy is deferred, so disable this shot before another trigger can consume it this frame.
+                ConsumeProjectile();
                 damageable.ApplyDamage(damage);
                 Destroy(gameObject);
                 return;
@@ -93,7 +97,7 @@ namespace CryptKnight.Combat
                 return;
             }
 
-            Destroy(gameObject);
+            StopAndDestroy();
         }
 
         private void ApplyBoundsBounce()
@@ -114,7 +118,7 @@ namespace CryptKnight.Combat
 
             if (bouncesRemaining <= 0)
             {
-                Destroy(gameObject);
+                StopAndDestroy();
                 return;
             }
 
@@ -188,6 +192,28 @@ namespace CryptKnight.Combat
             // Projectile art points right, so its local right axis follows the current velocity.
             float angle = Mathf.Atan2(velocity.y, velocity.x) * Mathf.Rad2Deg;
             visualTransform.localRotation = Quaternion.Euler(0f, 0f, angle);
+        }
+
+        private void StopAndDestroy()
+        {
+            if (!isConfigured)
+            {
+                return;
+            }
+
+            ConsumeProjectile();
+            Destroy(gameObject);
+        }
+
+        private void ConsumeProjectile()
+        {
+            isConfigured = false;
+            Collider2D projectileCollider = GetComponent<Collider2D>();
+            projectileCollider.enabled = false;
+
+            Rigidbody2D body = GetComponent<Rigidbody2D>();
+            body.linearVelocity = Vector2.zero;
+            body.simulated = false;
         }
     }
 }

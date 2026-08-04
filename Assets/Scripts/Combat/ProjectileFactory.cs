@@ -16,6 +16,12 @@ namespace CryptKnight.Combat
         private static Sprite spiderPurpleProjectileSprite;
         private static Sprite trapProjectileSprite;
 
+        public static void PrewarmEnemyVisuals()
+        {
+            GetEnemyProjectileSprite();
+            GetSpiderPurpleProjectileSprite();
+        }
+
         // Projectiles are generated from code here, maybe it should be a prefab?
         public static ProjectileController CreateCircleProjectile(
             string objectName,

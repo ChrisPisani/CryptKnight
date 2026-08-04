@@ -11,6 +11,8 @@ namespace CryptKnight.Dungeon
     {
         private readonly Dictionary<Vector2Int, DungeonRoomRuntimeState> rooms;
 
+        public event Action MapChanged;
+
         public DungeonRunState(
             DungeonLayout layout,
             Dictionary<Vector2Int, DungeonRoomRuntimeState> roomStates,
@@ -32,6 +34,7 @@ namespace CryptKnight.Dungeon
             FloorNumber = Math.Max(1, floorNumber);
             FloorSeed = runSeed;
             Difficulty = difficulty;
+            GetRoomState(Layout.StartPosition).MarkVisited();
         }
 
         public DungeonLayout Layout { get; }
@@ -55,6 +58,42 @@ namespace CryptKnight.Dungeon
             }
 
             return state;
+        }
+
+        public bool TryMove(RoomDirection direction)
+        {
+            if (!Navigator.TryMove(direction))
+            {
+                return false;
+            }
+
+            CurrentRoomState.MarkVisited();
+            MapChanged?.Invoke();
+            return true;
+        }
+
+        public bool MarkChestOpened(Vector2Int roomPosition, int chestId)
+        {
+            if (!GetRoomState(roomPosition).MarkChestOpened(chestId))
+            {
+                return false;
+            }
+
+            MapChanged?.Invoke();
+            return true;
+        }
+
+        public bool MarkEnemyDefeated(Vector2Int roomPosition, int enemyId)
+        {
+            DungeonRoomRuntimeState roomState = GetRoomState(roomPosition);
+            int previousDefeatedCount = roomState.DefeatedEnemies;
+            bool roomCleared = roomState.MarkEnemyDefeated(enemyId);
+            if (roomState.DefeatedEnemies > previousDefeatedCount)
+            {
+                MapChanged?.Invoke();
+            }
+
+            return roomCleared;
         }
     }
 }

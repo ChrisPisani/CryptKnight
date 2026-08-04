@@ -28,6 +28,8 @@ namespace CryptKnight.Gameplay
 
             explorationClip = Resources.Load<AudioClip>(ExplorationMusicPath);
             bossClip = Resources.Load<AudioClip>(BossMusicPath);
+            PreloadAudio(explorationClip);
+            PreloadAudio(bossClip);
             if (explorationClip == null && bossClip == null)
             {
                 Debug.LogWarning("Gameplay music clips could not be loaded from Resources/Audio/Game.");
@@ -62,7 +64,7 @@ namespace CryptKnight.Gameplay
 
             transition = currentClip == null || !source.isPlaying
                 ? StartCoroutine(FadeIn(nextClip))
-                : StartCoroutine(FadeOutThenPlay(nextClip));
+                : StartCoroutine(SwitchAndFadeIn(nextClip));
         }
 
         public void RefreshVolume()
@@ -123,15 +125,15 @@ namespace CryptKnight.Gameplay
             CompleteTransition();
         }
 
-        private IEnumerator FadeOutThenPlay(AudioClip nextClip)
+        private IEnumerator SwitchAndFadeIn(AudioClip nextClip)
         {
             targetClip = nextClip;
-            yield return FadeVolume(source.volume, 0f);
             source.Stop();
             source.clip = nextClip;
-            source.volume = TargetVolume;
+            source.volume = 0f;
             source.Play();
             currentClip = nextClip;
+            yield return FadeVolume(0f, TargetVolume);
             CompleteTransition();
         }
 
@@ -179,6 +181,14 @@ namespace CryptKnight.Gameplay
         {
             targetClip = null;
             transition = null;
+        }
+
+        private static void PreloadAudio(AudioClip clip)
+        {
+            if (clip != null && clip.loadState == AudioDataLoadState.Unloaded)
+            {
+                clip.LoadAudioData();
+            }
         }
 
         private static float TargetVolume => GameAudioSettings.MusicVolume;

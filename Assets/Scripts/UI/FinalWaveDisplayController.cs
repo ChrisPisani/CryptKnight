@@ -16,6 +16,11 @@ namespace CryptKnight.UI
         private GameObject displayRoot;
         private Text waveText;
         private Text statusText;
+        private FinalEncounterState displayedEncounter;
+        private FinalEncounterStatus displayedStatus;
+        private int displayedWave = -1;
+        private int displayedRemaining = -1;
+        private bool isVisible;
 
         public void Initialize(Transform parent, Font font)
         {
@@ -46,15 +51,38 @@ namespace CryptKnight.UI
             FinalEncounterState encounter = roomState?.FinalEncounter;
             if (encounter == null || encounter.Status == FinalEncounterStatus.NotStarted || encounter.IsComplete)
             {
-                displayRoot.SetActive(false);
+                SetVisible(false);
                 return;
             }
 
-            displayRoot.SetActive(true);
+            SetVisible(true);
+            if (displayedEncounter == encounter
+                && displayedStatus == encounter.Status
+                && displayedWave == encounter.CurrentWaveNumber
+                && displayedRemaining == encounter.RemainingEnemies)
+            {
+                return;
+            }
+
+            displayedEncounter = encounter;
+            displayedStatus = encounter.Status;
+            displayedWave = encounter.CurrentWaveNumber;
+            displayedRemaining = encounter.RemainingEnemies;
             waveText.text = $"FINAL WAVE {encounter.CurrentWaveNumber} / {encounter.TotalWaves}";
             statusText.text = encounter.Status == FinalEncounterStatus.Intermission
                 ? "PREPARE"
                 : $"{encounter.RemainingEnemies} ENEMIES REMAIN";
+        }
+
+        private void SetVisible(bool visible)
+        {
+            if (isVisible == visible)
+            {
+                return;
+            }
+
+            isVisible = visible;
+            displayRoot.SetActive(visible);
         }
 
         private static DungeonRoomRuntimeState GetCurrentFinalRoom()

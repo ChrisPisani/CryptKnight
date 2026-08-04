@@ -169,6 +169,9 @@ namespace CryptKnight.UI
             RunHUDController hudController = gameObject.AddComponent<RunHUDController>();
             hudController.Initialize(canvas.transform, defaultFont);
 
+            DungeonMapController mapController = gameObject.AddComponent<DungeonMapController>();
+            mapController.Initialize(canvas.transform, defaultFont);
+
             RunPauseMenuController pauseMenuController = gameObject.AddComponent<RunPauseMenuController>();
             pauseMenuController.Initialize(canvas.transform, defaultFont);
 

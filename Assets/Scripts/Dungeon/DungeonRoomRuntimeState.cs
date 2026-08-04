@@ -27,6 +27,7 @@ namespace CryptKnight.Dungeon
         public Vector2Int GridPosition { get; }
         public RoomType RoomType { get; }
         public bool ContentsInitialized { get; private set; }
+        public bool IsVisited { get; private set; }
         public int TotalEnemies { get; private set; }
         public int DefeatedEnemies { get; private set; }
         public int RemainingEnemies { get; private set; }
@@ -54,6 +55,17 @@ namespace CryptKnight.Dungeon
         public void MarkContentsInitialized()
         {
             ContentsInitialized = true;
+        }
+
+        public bool MarkVisited()
+        {
+            if (IsVisited)
+            {
+                return false;
+            }
+
+            IsVisited = true;
+            return true;
         }
 
         public void SetEnemyCount(int enemyCount)

@@ -243,6 +243,21 @@ namespace CryptKnight.Tests.EditMode
         }
 
         [Test]
+        public void ProjectileOnlyHitsOneEnemy()
+        {
+            ProjectileController projectile = CreateProjectile(DamageableTarget.Enemy);
+            EnemyHealth firstEnemy = CreateEnemy(out Collider2D firstCollider);
+            EnemyHealth secondEnemy = CreateEnemy(out Collider2D secondCollider);
+
+            LogAssert.Expect(LogType.Error, new Regex("Destroy may not be called from edit mode"));
+            InvokeTrigger(projectile, firstCollider);
+            InvokeTrigger(projectile, secondCollider);
+
+            Assert.That(firstEnemy.CurrentHealth, Is.EqualTo(2));
+            Assert.That(secondEnemy.CurrentHealth, Is.EqualTo(3));
+        }
+
+        [Test]
         public void ProjectileKeepsFractionalDamage()
         {
             ProjectileController projectile = ProjectileFactory.CreateCircleProjectile(
